@@ -1,0 +1,146 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- PWA & Mobile Web Capabilities -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Domme Lash">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#1C1917">
+    <link rel="manifest" href="manifest.json">
+
+    <title>Domme Lash | Mobile Luxury</title>
+    
+    <!-- App Icons (Gold Eye on Solid Mocha) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23BF953F' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='24' height='24' fill='%231C1917'/%3E%3Cpath d='M2 12C2 12 5 5 12 5C19 5 22 12 22 12C22 12 19 19 12 19C5 19 2 12 2 12Z' stroke='%23BF953F'/%3E%3Ccircle cx='12' cy='12' r='3' stroke='%23BF953F'/%3E%3Ccircle cx='12' cy='12' r='1' fill='%23BF953F'%3E%3C/circle%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23BF953F' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='24' height='24' fill='%231C1917'/%3E%3Cpath d='M2 12C2 12 5 5 12 5C19 5 22 12 22 12C22 12 19 19 12 19C5 19 2 12 2 12Z' stroke='%23BF953F'/%3E%3Ccircle cx='12' cy='12' r='3' stroke='%23BF953F'/%3E%3Ccircle cx='12' cy='12' r='1' fill='%23BF953F'%3E%3C/circle%3E%3C/svg%3E">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Inter:wght@100;200;300;400;500;600&family=Montserrat:wght@200;300;400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --safe-area-top: env(safe-area-inset-top);
+            --safe-area-bottom: env(safe-area-inset-bottom);
+            --nav-height: 80px;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1C1917;
+            color: #EAE0D5;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        h1, h2, h3, .font-serif {
+            font-family: 'Playfair Display', serif;
+        }
+        .font-num {
+            font-family: 'Montserrat', sans-serif;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .gold-gradient {
+            background: linear-gradient(135deg, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .gold-bg {
+            background: linear-gradient(135deg, #BF953F, #FCF6BA, #B38728);
+        }
+        .gold-border {
+            border: 0.5px solid #BF953F;
+        }
+        .mobile-h1 { font-size: clamp(1.5rem, 8vw, 2.5rem); }
+        .mobile-h2 { font-size: clamp(1.2rem, 6vw, 2rem); }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 0px; height: 0px; }
+        
+        .safe-pb { padding-bottom: calc(var(--safe-area-bottom) + 16px); }
+        .safe-pt { padding-top: var(--safe-area-top); }
+
+        /* Modal Layout Fixes */
+        .modal-container {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding-bottom: var(--nav-height); /* Margem de segurança para BottomNav */
+            z-index: 2000;
+        }
+        .modal-content {
+            width: 92%;
+            max-width: 900px;
+            max-height: 80vh;
+            overflow-y: auto;
+            margin: 0 auto;
+        }
+
+        /* Social Icons States */
+        .icon-active {
+            color: #D4AF37 !important;
+            opacity: 1 !important;
+            filter: none !important;
+            cursor: pointer !important;
+            transition: all 0.3s ease !important;
+        }
+        .icon-active:hover {
+            transform: scale(1.25);
+            filter: drop-shadow(0 0 8px rgba(212,175,55,0.6)) !important;
+        }
+        .icon-inactive {
+            color: #888888 !important;
+            opacity: 0.3 !important;
+            filter: grayscale(100%) !important;
+            cursor: default !important;
+            pointer-events: none !important;
+        }
+
+        @keyframes gold-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(191, 149, 63, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(191, 149, 63, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(191, 149, 63, 0); }
+        }
+        .animate-gold-pulse {
+            animation: gold-pulse 2s infinite;
+        }
+
+        @keyframes levitate {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-12px); }
+        }
+        .animate-levitate {
+            animation: levitate 6s ease-in-out infinite;
+        }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "recharts": "https://esm.sh/recharts@^3.7.0",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
+    "firebase/": "https://esm.sh/firebase@^12.9.0/"
+  }
+}
+</script>
+</head>
+<body class="selection:bg-[#BF953F] selection:text-white">
+    <div id="root"></div>
+    <script type="module" src="./index.tsx"></script>
+</body>
+</html>

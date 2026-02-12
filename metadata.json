@@ -1,0 +1,12 @@
+{
+  "name": "Deploy",
+  "short_name": "Domme",
+  "description": "Sistema de Gestão e Estilo para Lash Designers de Elite.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "theme_color": "#1C1917",
+  "background_color": "#1C1917",
+  "display": "standalone",
+  "orientation": "portrait"
+}
