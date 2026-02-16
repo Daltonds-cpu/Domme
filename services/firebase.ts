@@ -1,71 +1,102 @@
 
-/**
- * Local Data Service - Domme Lash Elite
- * Implementação via LocalStorage para garantir estabilidade e funcionamento offline.
- */
+import { initializeApp } from 'firebase/app';
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth';
+import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, query, where, getDoc } from 'firebase/firestore';
 
-const getStore = (name: string): any[] => {
-  const data = localStorage.getItem(`domme_v1_${name}`);
-  return data ? JSON.parse(data) : [];
+// Fix: Switched from import.meta.env to process.env to resolve TypeScript 'env' property errors on ImportMeta.
+// This matches the standard environment configuration used for the Gemini API in this project.
+const firebaseConfig = {
+  apiKey: process.env.VITE_FIREBASE_API_KEY,
+  authDomain: "domme-5ad27.firebaseapp.com",
+  projectId: "domme-5ad27",
+  storageBucket: "domme-5ad27.firebasestorage.app",
+  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.VITE_FIREBASE_APP_ID
 };
 
-const setStore = (name: string, data: any[]) => {
-  localStorage.setItem(`domme_v1_${name}`, JSON.stringify(data));
-};
-
-// Simulação de objeto de autenticação para manter compatibilidade com o restante do código
-export const auth = {
-  currentUser: { uid: 'local-master-user', displayName: 'Domme Master', photoURL: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&h=200&auto=format&fit=crop' }
-};
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const googleProvider = new GoogleAuthProvider();
 
 export const loginWithGoogle = async () => {
-  // Simulação de login bem-sucedido
-  return auth.currentUser;
-};
-
-export const logout = () => {
-  localStorage.removeItem('domme_auth_active');
-  window.location.reload();
-};
-
-export const dataService = {
-  async getCollection(collectionName: string) {
-    return getStore(collectionName);
-  },
-
-  async getItem(collectionName: string, id: string) {
-    const store = getStore(collectionName);
-    return store.find(item => item.id === id) || null;
-  },
-
-  async saveItem(collectionName: string, item: any) {
-    const store = getStore(collectionName);
-    const id = item.id || Math.random().toString(36).substr(2, 9);
-    
-    const newItem = { 
-      ...item, 
-      id, 
-      ownerId: 'local-master-user', 
-      updatedAt: new Date().toISOString() 
-    };
-
-    const index = store.findIndex(i => i.id === id);
-    if (index > -1) {
-      store[index] = newItem;
-    } else {
-      store.push(newItem);
-    }
-
-    setStore(collectionName, store);
-    return newItem;
-  },
-
-  async deleteItem(collectionName: string, id: string) {
-    const store = getStore(collectionName);
-    const filtered = store.filter(i => i.id !== id);
-    setStore(collectionName, filtered);
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    return result.user;
+  } catch (error) {
+    console.error("Erro na autenticação Google:", error);
+    throw error;
   }
 };
 
-export const isConfigured = true;
-export default {};
+export const logout = () => signOut(auth);
+
+export const dataService = {
+  /**
+   * Recupera apenas documentos que pertencem ao usuário logado.
+   */
+  async getCollection(collectionName: string) {
+    const user = auth.currentUser;
+    if (!user) return [];
+    
+    try {
+      const q = query(
+        collection(db, collectionName), 
+        where("userId", "==", user.uid)
+      );
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+    } catch (error) {
+      console.error(`Erro ao buscar ${collectionName}:`, error);
+      return [];
+    }
+  },
+
+  async getItem(collectionName: string, id: string) {
+    const user = auth.currentUser;
+    if (!user) return null;
+    
+    try {
+      const docRef = doc(db, collectionName, id);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists() && docSnap.data().userId === user.uid) {
+        return { id: docSnap.id, ...docSnap.data() as any };
+      }
+      return null;
+    } catch (error) {
+      console.error(`Erro ao buscar item ${id}:`, error);
+      return null;
+    }
+  },
+
+  /**
+   * Salva o item injetando automaticamente o userId para segurança.
+   */
+  async saveItem(collectionName: string, item: any) {
+    const user = auth.currentUser;
+    if (!user) throw new Error("Usuário não autenticado");
+    
+    const id = item.id || Math.random().toString(36).substr(2, 9);
+    const docRef = doc(db, collectionName, id);
+    
+    const payload = { 
+      ...item, 
+      id, 
+      userId: user.uid, // Garantia de separação de dados
+      updatedAt: new Date().toISOString() 
+    };
+
+    await setDoc(docRef, payload, { merge: true });
+    return payload;
+  },
+
+  async deleteItem(collectionName: string, id: string) {
+    const user = auth.currentUser;
+    if (!user) return;
+    
+    const docRef = doc(db, collectionName, id);
+    await deleteDoc(docRef);
+  }
+};
+
+export default app;

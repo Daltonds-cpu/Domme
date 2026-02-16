@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { ICONS } from '../constants';
+import { logout } from '../services/firebase';
 
 interface SidebarProps {
   activeTab: string;
@@ -17,7 +18,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userProfile 
     { id: 'dashboard', label: 'Panorama', icon: ICONS.Dashboard },
     { id: 'clients', label: 'Portfólio de Estilo', icon: ICONS.Portfolio },
     { id: 'schedule', label: 'Gestão de Presença', icon: ICONS.Presence },
-    { id: 'finance', label: 'Métricas de Luxo', icon: ICONS.Finance },
+    { id: 'finance', label: 'Métricas de Lucro', icon: ICONS.Finance },
     { id: 'more', label: 'Mais', icon: ICONS.About },
   ];
 
@@ -33,7 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userProfile 
         <h1 className="text-2xl font-serif font-bold tracking-[0.3em] text-white">
           DOMME<span className="gold-gradient">LASH</span>
         </h1>
-        <p className="text-[9px] uppercase tracking-[0.4em] text-stone-500 mt-2 font-light">Exclusividade & Domínio Portfólio</p>
+        <p className="text-[9px] uppercase tracking-[0.4em] text-stone-500 mt-2 font-light">Exclusividade & Domínio</p>
       </div>
 
       <nav className="flex-1 px-6 space-y-4 mt-4">
@@ -57,7 +58,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userProfile 
         })}
       </nav>
 
-      <div className="p-10 mt-auto">
+      <div className="p-8 mt-auto border-t border-white/5 space-y-4">
         <div 
           onClick={() => setActiveTab('more')}
           className="flex items-center space-x-4 p-4 rounded-2xl glass transition-all hover:bg-white/5 cursor-pointer group/profile"
@@ -75,6 +76,16 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userProfile 
             <p className="text-[9px] text-stone-500 uppercase tracking-tighter truncate">{profile.title}</p>
           </div>
         </div>
+
+        <button 
+          onClick={() => logout()}
+          className="w-full py-3 text-[9px] uppercase tracking-[0.4em] text-stone-600 hover:text-red-500 transition-colors flex items-center justify-center space-x-2"
+        >
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <span>Sair</span>
+        </button>
       </div>
     </aside>
   );

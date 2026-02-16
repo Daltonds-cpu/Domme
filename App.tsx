@@ -9,6 +9,7 @@ import FinanceDashboard from './components/FinanceDashboard';
 import MoreTab from './components/MoreTab';
 import LoginPage from './components/LoginPage';
 import { auth } from './services/firebase';
+import { onAuthStateChanged, User } from 'firebase/auth';
 
 interface UserProfile {
   name: string;
@@ -20,33 +21,36 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [prefilledClientName, setPrefilledClientName] = useState('');
   const [initialSelectedClientId, setInitialSelectedClientId] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   
-  const [userProfile, setUserProfile] = useState<UserProfile>(() => {
-    const saved = localStorage.getItem('domme_user_profile');
-    return saved ? JSON.parse(saved) : {
-      name: auth.currentUser.displayName,
-      avatar: auth.currentUser.photoURL,
-      title: 'Senior Lash Master'
-    };
+  const [userProfile, setUserProfile] = useState<UserProfile>({
+    name: 'Domme Master',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&h=200&auto=format&fit=crop',
+    title: 'Senior Lash Master'
   });
 
   useEffect(() => {
-    // Verificação de autenticação local persistente
-    const token = localStorage.getItem('domme_auth_active');
-    setIsAuthenticated(!!token);
-    setIsInitializing(false);
+    // Listener oficial do Firebase para autenticação
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      if (user) {
+        // Sincroniza o perfil visual com os dados do Google
+        setUserProfile(prev => ({
+          ...prev,
+          name: user.displayName || prev.name,
+          avatar: user.photoURL || prev.avatar
+        }));
+      }
+      setIsInitializing(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [activeTab]);
-
-  const handleLoginSuccess = () => {
-    localStorage.setItem('domme_auth_active', 'true');
-    setIsAuthenticated(true);
-  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -81,7 +85,6 @@ const App: React.FC = () => {
             onUpdateProfile={(p) => {
               const newProfile = {...userProfile, ...p};
               setUserProfile(newProfile);
-              localStorage.setItem('domme_user_profile', JSON.stringify(newProfile));
             }} 
             userProfile={userProfile} 
           />
@@ -94,14 +97,21 @@ const App: React.FC = () => {
   if (isInitializing) {
     return (
       <div className="min-h-screen bg-[#1C1917] flex flex-col items-center justify-center space-y-6">
-        <div className="w-12 h-12 border border-[#BF953F]/20 border-t-[#BF953F] rounded-full animate-spin"></div>
-        <p className="text-[10px] uppercase tracking-[0.5em] text-stone-500">Iniciando Domínio...</p>
+        <div className="relative w-24 h-24 flex items-center justify-center">
+          <div className="absolute inset-0 border-2 border-[#BF953F]/10 rounded-full"></div>
+          <div className="absolute inset-0 border-2 border-[#BF953F] border-t-transparent rounded-full animate-spin"></div>
+          <svg className="w-10 h-10 text-[#BF953F]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M2 12C2 12 5 5 12 5C19 5 22 12 22 12C22 12 19 19 12 19C5 19 2 12 2 12Z" strokeWidth="1" />
+            <circle cx="12" cy="12" r="3" strokeWidth="1" />
+          </svg>
+        </div>
+        <p className="text-[10px] uppercase tracking-[0.6em] text-stone-500 animate-pulse">Autenticando Domínio</p>
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  if (!currentUser) {
+    return <LoginPage onLoginSuccess={() => {}} />;
   }
 
   return (
