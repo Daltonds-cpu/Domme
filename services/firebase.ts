@@ -1,58 +1,60 @@
 
 /**
- * DOMME LASH - MOTOR DE DADOS LOCAL
- * Este arquivo foi limpo de qualquer dependência externa (Firebase/Cloud).
- * O sistema opera agora em modo puramente local para máxima privacidade.
+ * Local Data Service - Domme Lash Elite
+ * Substitui o Firebase para persistência local segura e rápida.
  */
 
+const getStore = (name: string): any[] => {
+  const data = localStorage.getItem(`domme_v1_${name}`);
+  return data ? JSON.parse(data) : [];
+};
+
+const setStore = (name: string, data: any[]) => {
+  localStorage.setItem(`domme_v1_${name}`, JSON.stringify(data));
+};
+
 export const auth = {
-  get currentUser() {
-    const session = localStorage.getItem('domme_auth_session');
-    return session === 'active' ? { uid: 'master-user-local' } : null;
-  }
+  currentUser: { uid: 'local-master-user', displayName: 'Domme Master' }
 };
 
 export const dataService = {
-  /**
-   * Obtém uma coleção de dados do LocalStorage
-   */
   async getCollection(collectionName: string) {
-    const local = localStorage.getItem(`domme_${collectionName}`);
-    return local ? JSON.parse(local) : [];
+    // Simula delay de rede para manter a sensação de sistema robusto
+    await new Promise(resolve => setTimeout(resolve, 100));
+    return getStore(collectionName);
   },
 
-  /**
-   * Salva ou atualiza um item no LocalStorage
-   */
-  async saveItem(collectionName: string, item: any) {
-    const data = await this.getCollection(collectionName);
-    let updatedData;
+  async getItem(collectionName: string, id: string) {
+    const store = getStore(collectionName);
+    return store.find(item => item.id === id) || null;
+  },
 
-    if (item.id) {
-      // Atualização
-      updatedData = data.map((i: any) => i.id === item.id ? { ...i, ...item } : i);
+  async saveItem(collectionName: string, item: any) {
+    const store = getStore(collectionName);
+    const id = item.id || Math.random().toString(36).substr(2, 9);
+    
+    const newItem = { 
+      ...item, 
+      id, 
+      ownerId: 'local-master-user', 
+      updatedAt: new Date().toISOString() 
+    };
+
+    const index = store.findIndex(i => i.id === id);
+    if (index > -1) {
+      store[index] = newItem;
     } else {
-      // Criação
-      const newItem = { 
-        ...item, 
-        id: Math.random().toString(36).substr(2, 9), 
-        ownerId: auth.currentUser?.uid || 'local' 
-      };
-      updatedData = [newItem, ...data];
+      store.push(newItem);
     }
 
-    localStorage.setItem(`domme_${collectionName}`, JSON.stringify(updatedData));
-    return updatedData;
+    setStore(collectionName, store);
+    return newItem;
   },
 
-  /**
-   * Remove um item do LocalStorage
-   */
   async deleteItem(collectionName: string, id: string) {
-    const data = await this.getCollection(collectionName);
-    const updatedData = data.filter((i: any) => i.id !== id);
-    localStorage.setItem(`domme_${collectionName}`, JSON.stringify(updatedData));
-    return updatedData;
+    const store = getStore(collectionName);
+    const filtered = store.filter(i => i.id !== id);
+    setStore(collectionName, filtered);
   }
 };
 

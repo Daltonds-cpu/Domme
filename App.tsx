@@ -31,9 +31,9 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    // Sistema de sessão puramente local
-    const session = localStorage.getItem('domme_auth_session');
-    setIsAuthenticated(session === 'active');
+    // Verifica autenticação local
+    const token = localStorage.getItem('domme_auth_token');
+    setIsAuthenticated(!!token);
   }, []);
 
   useEffect(() => {
@@ -68,7 +68,16 @@ const App: React.FC = () => {
       case 'finance':
         return <FinanceDashboard />;
       case 'more':
-        return <MoreTab onUpdateProfile={(p) => setUserProfile({...userProfile, ...p})} userProfile={userProfile} />;
+        return (
+          <MoreTab 
+            onUpdateProfile={(p) => {
+              const newProfile = {...userProfile, ...p};
+              setUserProfile(newProfile);
+              localStorage.setItem('domme_user_profile', JSON.stringify(newProfile));
+            }} 
+            userProfile={userProfile} 
+          />
+        );
       default:
         return <Dashboard />;
     }
