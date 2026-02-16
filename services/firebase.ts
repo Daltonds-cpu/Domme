@@ -3,14 +3,15 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, query, where, getDoc, orderBy } from 'firebase/firestore';
 
+// Prioriza chaves do ambiente (VITE_) para compatibilidade com Vercel/Vite/Ambiente de Execução
+// Fix: Replaced import.meta.env with process.env to fix "Property 'env' does not exist on type 'ImportMeta'" errors.
 const firebaseConfig = {
-  // Fix: Using process.env to avoid ImportMeta type errors in this environment
   apiKey: (process.env as any).VITE_FIREBASE_API_KEY || "AIzaSyBLtOil56xWKHUX_xoDgyzyXXlf4aj4rkE",
-  authDomain: "domme-5ad27.firebaseapp.com",
-  projectId: "domme-5ad27",
-  storageBucket: "domme-5ad27.firebasestorage.app",
-  messagingSenderId: "1006381592174",
-  appId: "1:1006381592174:web:e9df2202c764dc5dacc07f"
+  authDomain: (process.env as any).VITE_FIREBASE_AUTH_DOMAIN || "domme-5ad27.firebaseapp.com",
+  projectId: (process.env as any).VITE_FIREBASE_PROJECT_ID || "domme-5ad27",
+  storageBucket: (process.env as any).VITE_FIREBASE_STORAGE_BUCKET || "domme-5ad27.firebasestorage.app",
+  messagingSenderId: (process.env as any).VITE_FIREBASE_MESSAGING_SENDER_ID || "1006381592174",
+  appId: (process.env as any).VITE_FIREBASE_APP_ID || "1:1006381592174:web:e9df2202c764dc5dacc07f"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -36,7 +37,6 @@ export const dataService = {
     }
   },
 
-  // Fix: Added getItem method to support Dashboard and other components
   async getItem(collectionName: string, id: string) {
     const user = auth.currentUser;
     if (!user) return null;
@@ -50,23 +50,6 @@ export const dataService = {
     } catch (error) {
       console.error(`Erro ao buscar item em ${collectionName}:`, error);
       return null;
-    }
-  },
-
-  async getClientHistory(clientId: string) {
-    const user = auth.currentUser;
-    if (!user) return [];
-    
-    try {
-      const clientRef = doc(db, 'clients', clientId);
-      const snap = await getDoc(clientRef);
-      if (snap.exists() && (snap.data() as any).userId === user.uid) {
-        return (snap.data() as any).dossie || [];
-      }
-      return [];
-    } catch (error) {
-      console.error("Erro ao buscar histórico:", error);
-      return [];
     }
   },
 

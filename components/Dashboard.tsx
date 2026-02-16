@@ -1,7 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { ICONS } from '../constants';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Client, Appointment } from '../types';
 import RegistrationModal from './RegistrationModal';
 import { dataService } from '../services/firebase';
@@ -52,6 +51,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToRegistration, onNavig
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [newReminderText, setNewReminderText] = useState('');
   const [isAddingReminder, setIsAddingReminder] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -67,7 +67,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToRegistration, onNavig
     ]);
 
     const todayStr = new Date().toISOString().split('T')[0];
-    setTodayAppts((appts as any[]).filter((a) => a.date === todayStr).sort((a, b) => a.time.localeCompare(b.time)));
+    
+    // Filtro Agenda de Hoje: Data atual + Ordenação por Horário
+    const filteredAppts = (appts as any[])
+      .filter((a) => a.date === todayStr)
+      .sort((a, b) => a.time.localeCompare(b.time));
+    
+    setTodayAppts(filteredAppts);
     setClients(clis as any[]);
     setReminders(rems as any[]);
 
@@ -92,8 +98,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToRegistration, onNavig
   };
 
   const removeReminder = async (id: string) => {
-    await dataService.deleteItem('reminders', id);
-    setReminders(prev => prev.filter(r => r.id !== id));
+    setDeletingId(id); // Gatilho para animação de fade-out
+    setTimeout(async () => {
+      await dataService.deleteItem('reminders', id);
+      setReminders(prev => prev.filter(r => r.id !== id));
+      setDeletingId(null);
+    }, 400);
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -114,19 +124,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToRegistration, onNavig
     const tDay = today.getDate();
     const tMonth = today.getMonth() + 1;
     const todayBdays: Client[] = [];
-    const upcomingBdays: Client[] = [];
 
     clients.forEach(c => {
       if (!c.birthday) return;
-      const [, m, d] = c.birthday.split('-').map(Number);
+      // Espera-se formato YYYY-MM-DD
+      const parts = c.birthday.split('-');
+      const d = parseInt(parts[2]);
+      const m = parseInt(parts[1]);
+      
       if (d === tDay && m === tMonth) todayBdays.push(c);
-      else {
-        const bDate = new Date(today.getFullYear(), m - 1, d);
-        const diff = Math.ceil((bDate.getTime() - today.getTime()) / 86400000);
-        if (diff > 0 && diff <= 7) upcomingBdays.push(c);
-      }
     });
-    return { today: todayBdays, upcoming: upcomingBdays };
+    return todayBdays;
   }, [clients]);
 
   return (
@@ -171,61 +179,109 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToRegistration, onNavig
       <TimeBanner />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* CARD: LEMBRETES VIP */}
         <div className="glass p-8 rounded-[2rem] border-[#BF953F]/10 flex flex-col h-[400px] relative">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-lg font-serif italic text-white tracking-widest">Lembretes VIP</h3>
-            <button onClick={() => setIsAddingReminder(!isAddingReminder)} className="w-10 h-10 rounded-full gold-bg flex items-center justify-center text-black shadow-lg"><ICONS.Plus className="w-5 h-5" /></button>
+            <button onClick={() => setIsAddingReminder(!isAddingReminder)} className="w-10 h-10 rounded-full gold-bg flex items-center justify-center text-black shadow-lg hover:scale-110 transition-transform"><ICONS.Plus className={`w-5 h-5 transition-transform ${isAddingReminder ? 'rotate-45' : ''}`} /></button>
           </div>
           <div className="flex-1 overflow-y-auto no-scrollbar space-y-3">
             {isAddingReminder && (
-              <form onSubmit={handleAddReminder} className="mb-4">
-                <input autoFocus value={newReminderText} onChange={(e) => setNewReminderText(e.target.value)} placeholder="Novo item..." className="w-full bg-white/5 border border-[#BF953F]/40 rounded-2xl px-5 py-3 text-xs text-white outline-none" />
+              <form onSubmit={handleAddReminder} className="mb-4 animate-in slide-in-from-top-2">
+                <input autoFocus value={newReminderText} onChange={(e) => setNewReminderText(e.target.value)} placeholder="Definir nova tarefa..." className="w-full bg-white/5 border border-[#BF953F]/40 rounded-2xl px-5 py-3 text-xs text-white outline-none focus:border-[#BF953F]" />
               </form>
             )}
-            {reminders.map(r => (
-              <div key={r.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+            {reminders.length > 0 ? reminders.map(r => (
+              <div 
+                key={r.id} 
+                className={`flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5 group transition-all duration-300 ${deletingId === r.id ? 'opacity-0 scale-95' : 'opacity-100'}`}
+              >
                 <p className="text-xs text-stone-300 italic">{r.text}</p>
-                <button onClick={() => removeReminder(r.id)} className="text-red-500/40 hover:text-red-500 transition-colors"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" strokeWidth="2"/></svg></button>
+                <button 
+                  onClick={() => removeReminder(r.id)} 
+                  className="text-stone-700 hover:text-red-500 transition-colors p-1"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M6 18L18 6M6 6l12 12" strokeWidth="2.5" strokeLinecap="round"/>
+                  </svg>
+                </button>
               </div>
-            ))}
+            )) : (
+              <p className="text-[10px] text-stone-600 uppercase tracking-widest text-center py-10">Tudo em ordem no domínio.</p>
+            )}
           </div>
         </div>
 
+        {/* CARD: CELEBRAÇÃO VIP (ANIVERSARIANTES) */}
         <div className="glass p-8 rounded-[2rem] border-[#BF953F]/10 flex flex-col h-[400px]">
           <h3 className="text-lg font-serif italic text-white tracking-widest mb-6">Celebração VIP</h3>
           <div className="flex-1 space-y-4 overflow-y-auto no-scrollbar">
-            {birthdays.today.map(c => (
-              <div key={c.id} className="flex items-center justify-between p-4 rounded-2xl bg-[#BF953F]/5 border-[#BF953F]/30 animate-pulse">
-                <p className="text-xs font-bold text-[#BF953F] uppercase">{c.name}</p>
-                <ICONS.WhatsApp className="w-4 h-4 text-[#BF953F]" />
+            {birthdays.length > 0 ? birthdays.map(c => (
+              <div key={c.id} className="flex items-center justify-between p-5 rounded-2xl bg-[#BF953F]/5 border border-[#BF953F]/20 animate-in zoom-in-95 duration-500">
+                <div className="flex items-center space-x-3">
+                  <span className="text-xl">🎈</span>
+                  <div>
+                    <p className="text-[11px] font-bold text-white uppercase tracking-widest">{c.name}</p>
+                    <p className="text-[9px] text-[#BF953F] uppercase">Aniversariante do Dia</p>
+                  </div>
+                </div>
+                <a href={`https://wa.me/${c.phone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="w-10 h-10 rounded-full glass border-[#BF953F]/40 flex items-center justify-center text-[#BF953F] hover:bg-[#BF953F] hover:text-black transition-all">
+                  <ICONS.WhatsApp className="w-4 h-4" />
+                </a>
               </div>
-            ))}
-            {birthdays.upcoming.map(c => (
-              <div key={c.id} className="flex justify-between border-b border-white/5 pb-2 opacity-60">
-                <p className="text-[10px] text-stone-400">{c.name}</p>
-                <p className="text-[10px] text-[#BF953F] font-bold">{c.birthday?.split('-').reverse().slice(0,2).join('/')}</p>
+            )) : (
+              <div className="text-center py-20 opacity-30 flex flex-col items-center">
+                <svg className="w-10 h-10 mb-3 text-stone-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" strokeWidth="1" />
+                </svg>
+                <p className="text-[10px] uppercase tracking-[0.2em]">Nenhum aniversariante hoje</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
 
+        {/* CARD: AGENDA DE HOJE */}
         <div className="glass p-8 rounded-[2rem] border-[#BF953F]/10 flex flex-col h-[400px]">
           <h3 className="text-lg font-serif italic text-white tracking-widest mb-6">Agenda de Hoje</h3>
           <div className="space-y-4 overflow-y-auto no-scrollbar">
-            {todayAppts.map(appt => (
-              <div key={appt.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5 group hover:border-[#BF953F]/40 cursor-pointer" onClick={onNavigateToSchedule}>
-                <div className="flex items-center space-x-3">
-                  <span className="text-[10px] font-bold text-[#BF953F]">{appt.time}</span>
-                  <p className="text-xs italic text-white">{clients.find(c => c.id === appt.clientId)?.name || 'Externo'}</p>
+            {todayAppts.length > 0 ? todayAppts.map(appt => {
+              const client = clients.find(c => c.id === appt.clientId);
+              return (
+                <div 
+                  key={appt.id} 
+                  className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5 group hover:border-[#BF953F]/40 cursor-pointer transition-all" 
+                  onClick={onNavigateToSchedule}
+                >
+                  <div className="flex items-center space-x-4">
+                    <span className="text-[11px] font-bold text-[#BF953F] font-num">{appt.time}</span>
+                    <div className="h-4 w-[1px] bg-white/10"></div>
+                    <div>
+                      <p className="text-xs italic text-white font-medium">{client?.name || 'Cliente Externo'}</p>
+                      <p className="text-[8px] uppercase tracking-widest text-stone-500">{appt.serviceType}</p>
+                    </div>
+                  </div>
+                  <ICONS.Plus className="w-3 h-3 rotate-45 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
-                <ICONS.Plus className="w-3 h-3 rotate-45 opacity-20 group-hover:opacity-100" />
+              );
+            }) : (
+              <div className="text-center py-20 opacity-30 flex flex-col items-center">
+                <ICONS.Presence className="w-10 h-10 mb-3 text-stone-500" />
+                <p className="text-[10px] uppercase tracking-[0.2em]">Sem compromissos para hoje</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>
 
-      <RegistrationModal isOpen={isOverlayOpen} onClose={() => setIsOverlayOpen(false)} onSuccess={loadDashboardData} onNavigateToVIP={(name) => { setIsOverlayOpen(false); if (onNavigateToRegistration) onNavigateToRegistration(name); }} />
+      <RegistrationModal 
+        isOpen={isOverlayOpen} 
+        onClose={() => setIsOverlayOpen(false)} 
+        onSuccess={loadDashboardData} 
+        onNavigateToVIP={(name) => { 
+          setIsOverlayOpen(false); 
+          if (onNavigateToRegistration) onNavigateToRegistration(name); 
+        }} 
+      />
     </div>
   );
 };
