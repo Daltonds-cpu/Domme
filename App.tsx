@@ -8,8 +8,6 @@ import ScheduleTimeline from './components/ScheduleTimeline';
 import FinanceDashboard from './components/FinanceDashboard';
 import MoreTab from './components/MoreTab';
 import LoginPage from './components/LoginPage';
-import { auth } from './services/firebase';
-import { onAuthStateChanged, setPersistence, browserLocalPersistence } from 'firebase/auth';
 
 interface UserProfile {
   name: string;
@@ -33,26 +31,9 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    // Configura persistência explícita
-    setPersistence(auth, browserLocalPersistence).then(() => {
-      const unsubscribe = onAuthStateChanged(auth, (user) => {
-        if (user) {
-          setIsAuthenticated(true);
-          setUserProfile(prev => {
-            const updated = {
-              ...prev,
-              name: user.displayName || prev.name,
-              avatar: user.photoURL || prev.avatar
-            };
-            localStorage.setItem('domme_user_profile', JSON.stringify(updated));
-            return updated;
-          });
-        } else {
-          setIsAuthenticated(false);
-        }
-      });
-      return () => unsubscribe();
-    });
+    // Sistema de sessão puramente local
+    const session = localStorage.getItem('domme_auth_session');
+    setIsAuthenticated(session === 'active');
   }, []);
 
   useEffect(() => {

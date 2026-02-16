@@ -60,20 +60,18 @@
         .mobile-h1 { font-size: clamp(1.5rem, 8vw, 2.5rem); }
         .mobile-h2 { font-size: clamp(1.2rem, 6vw, 2rem); }
         
-        /* Custom scrollbar */
         ::-webkit-scrollbar { width: 0px; height: 0px; }
         
         .safe-pb { padding-bottom: calc(var(--safe-area-bottom) + 16px); }
         .safe-pt { padding-top: var(--safe-area-top); }
 
-        /* Modal Layout Fixes */
         .modal-container {
             position: fixed;
             inset: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding-bottom: var(--nav-height); /* Margem de segurança para BottomNav */
+            padding-bottom: var(--nav-height);
             z-index: 2000;
         }
         .modal-content {
@@ -84,7 +82,6 @@
             margin: 0 auto;
         }
 
-        /* Social Icons States */
         .icon-active {
             color: #D4AF37 !important;
             opacity: 1 !important;
@@ -133,8 +130,7 @@
     "vite": "https://esm.sh/vite@^7.3.1",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
-    "firebase/": "https://esm.sh/firebase@^12.9.0/"
+    "@google/genai": "https://esm.sh/@google/genai@^1.40.0"
   }
 }
 </script>

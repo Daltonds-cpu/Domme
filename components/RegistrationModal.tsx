@@ -2,8 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ICONS } from '../constants';
 import { Client, Appointment, DossieEntry } from '../types';
-import { db, auth } from '../services/firebase';
-import { collection, addDoc, updateDoc, doc, query, where, getDocs } from 'firebase/firestore';
+import { dataService } from '../services/firebase';
 
 interface RegistrationModalProps {
   isOpen: boolean;
@@ -14,186 +13,228 @@ interface RegistrationModalProps {
 }
 
 const RegistrationModal: React.FC<RegistrationModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  onSuccess, 
-  onNavigateToVIP,
-  appointmentToEdit 
+  isOpen, onClose, onSuccess, onNavigateToVIP, appointmentToEdit 
 }) => {
   const [search, setSearch] = useState('');
   const [showResults, setShowResults] = useState(false);
-  const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
 
   const [totalPrice, setTotalPrice] = useState<string>('');
+  const [depositValue, setDepositValue] = useState<string>('');
+  const [installments, setInstallments] = useState<number>(1);
   const [procedure, setProcedure] = useState('');
+  const [observations, setObservations] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedTime, setSelectedTime] = useState('09:00');
-  const [paymentMethod, setPaymentMethod] = useState<Appointment['paymentMethod']>('PIX');
-  const [hasDeposit, setHasDeposit] = useState(false);
-  const [depositValue, setDepositValue] = useState<string>('');
-  const [installments, setInstallments] = useState(1);
+  const [paymentStatus, setPaymentStatus] = useState<'pago' | 'pendente' | 'parcial'>('pago');
 
   useEffect(() => {
-    const loadClients = async () => {
-      const user = auth.currentUser;
-      if (!user) return;
-      const q = query(collection(db, 'clients'), where('ownerId', '==', user.uid));
-      const snap = await getDocs(q);
-      setClients(snap.docs.map(d => ({ ...d.data(), id: d.id } as Client)));
-    };
     if (isOpen) loadClients();
   }, [isOpen]);
+
+  const loadClients = async () => {
+    const data = await dataService.getCollection('clients');
+    setClients(data);
+  };
 
   useEffect(() => {
     if (appointmentToEdit) {
       const client = clients.find(c => c.id === appointmentToEdit.clientId);
       setSearch(client ? client.name : 'Cliente Externo');
       setTotalPrice(appointmentToEdit.price.toString());
-      setProcedure(appointmentToEdit.serviceType);
-      setSelectedDate(appointmentToEdit.date);
-      setSelectedTime(appointmentToEdit.time);
-      setPaymentMethod(appointmentToEdit.paymentMethod || 'PIX');
-      setHasDeposit(!!(appointmentToEdit.depositValue && appointmentToEdit.depositValue > 0));
       setDepositValue(appointmentToEdit.depositValue?.toString() || '');
       setInstallments(appointmentToEdit.installments || 1);
+      setProcedure(appointmentToEdit.serviceType);
+      setObservations(appointmentToEdit.status === 'scheduled' ? '' : ''); // Simplificado
+      setSelectedDate(appointmentToEdit.date);
+      setSelectedTime(appointmentToEdit.time);
+      setPaymentStatus(appointmentToEdit.paymentStatus || 'pago');
     } else {
       setSearch('');
       setTotalPrice('');
-      setProcedure('');
-      setSelectedDate(new Date().toISOString().split('T')[0]);
-      setSelectedTime('09:00');
-      setPaymentMethod('PIX');
-      setHasDeposit(false);
       setDepositValue('');
       setInstallments(1);
+      setProcedure('');
+      setObservations('');
+      setSelectedDate(new Date().toISOString().split('T')[0]);
+      setSelectedTime('09:00');
     }
   }, [appointmentToEdit, isOpen, clients]);
 
-  const remainingValue = useMemo(() => {
-    const total = parseFloat(totalPrice) || 0;
-    const dep = hasDeposit ? (parseFloat(depositValue) || 0) : 0;
-    return Math.max(0, total - dep);
-  }, [totalPrice, depositValue, hasDeposit]);
-
-  const filteredClientsSearch = useMemo(() => {
+  const filteredClients = useMemo(() => {
     if (!search.trim()) return [];
     return clients.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
   }, [search, clients]);
 
   const handleConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
-    const user = auth.currentUser;
-    if (!user) return;
-
     const selectedClient = clients.find(c => c.name === search);
     const totalVal = parseFloat(totalPrice) || 0;
-    const depVal = hasDeposit ? (parseFloat(depositValue) || 0) : 0;
-    const paymentStatus: Appointment['paymentStatus'] = depVal >= totalVal ? 'pago' : depVal > 0 ? 'parcial' : 'pendente';
+    const depVal = parseFloat(depositValue) || 0;
 
     const apptData: any = {
-      ownerId: user.uid,
+      ...(appointmentToEdit || {}),
       clientId: selectedClient?.id || 'guest',
       date: selectedDate,
       time: selectedTime,
-      durationMinutes: 90,
       serviceType: procedure || 'Atendimento Personalizado',
-      status: 'scheduled',
       price: totalVal,
       depositValue: depVal,
-      installments: paymentMethod === 'Cartão de Crédito' ? installments : undefined,
-      paymentMethod,
-      paymentStatus
+      installments: installments,
+      paymentStatus: depVal > 0 && depVal < totalVal ? 'parcial' : paymentStatus,
+      status: 'scheduled'
     };
 
-    try {
-      if (appointmentToEdit) {
-        await updateDoc(doc(db, 'appointments', appointmentToEdit.id), apptData);
-      } else {
-        await addDoc(collection(db, 'appointments'), apptData);
-      }
+    await dataService.saveItem('appointments', apptData);
 
-      if (selectedClient) {
-        const notes = `Pagamento via ${paymentMethod}${paymentMethod === 'Cartão de Crédito' ? ` em ${installments}x` : ''}.${hasDeposit ? ` Sinal de R$ ${depVal.toFixed(2)} pago.` : ''} Valor restante: R$ ${remainingValue.toFixed(2)}.`;
-        
-        let updatedDossie: DossieEntry[];
-        if (appointmentToEdit) {
-          updatedDossie = selectedClient.dossie.map(d => {
-            if (d.date === new Date(appointmentToEdit.date).toLocaleDateString('pt-BR') && d.technique === appointmentToEdit.serviceType) {
-              return { 
-                ...d, date: new Date(selectedDate).toLocaleDateString('pt-BR'), 
-                time: selectedTime, technique: procedure || 'Atendimento Personalizado', 
-                price: totalVal, notes: notes 
-              };
-            }
-            return d;
-          });
-        } else {
-          const newDossieEntry: DossieEntry = {
-            id: Math.random().toString(36).substr(2, 9),
-            date: new Date(selectedDate).toLocaleDateString('pt-BR'),
-            time: selectedTime,
-            technique: procedure || 'Atendimento Personalizado',
-            curvature: '-', thickness: '-', price: totalVal, notes: notes, photos: []
-          };
-          updatedDossie = [newDossieEntry, ...selectedClient.dossie];
-        }
-        await updateDoc(doc(db, 'clients', selectedClient.id), { lastVisit: 'Hoje', dossie: updatedDossie });
-      }
-
-      setShowSuccessToast(true);
-      setTimeout(() => {
-        setShowSuccessToast(false);
-        onClose();
-        if (onSuccess) onSuccess();
-      }, 1500);
-    } catch (err) {
-      console.error("Erro ao agendar:", err);
+    if (selectedClient) {
+      const newDossieEntry: DossieEntry = {
+        id: Math.random().toString(36).substr(2, 9),
+        date: new Date(selectedDate).toLocaleDateString('pt-BR'),
+        time: selectedTime,
+        technique: procedure || 'Atendimento Personalizado',
+        curvature: '-', 
+        thickness: '-', 
+        price: totalVal, 
+        notes: `${observations}. Parcelamento: ${installments}x. Sinal: R$ ${depVal}.`, 
+        photos: []
+      };
+      const updatedDossie = [newDossieEntry, ...(selectedClient.dossie || [])];
+      await dataService.saveItem('clients', { ...selectedClient, dossie: updatedDossie, lastVisit: 'Recentemente' });
     }
+
+    onClose();
+    if (onSuccess) onSuccess();
   };
 
-  if (!isOpen && !showSuccessToast) return null;
+  if (!isOpen) return null;
 
   return (
-    <div className={`fixed inset-0 z-[3000] flex items-center justify-center transition-all duration-700 ${isOpen || showSuccessToast ? 'visible opacity-100' : 'invisible opacity-0'}`}>
-      <div className="absolute inset-0 bg-[#1C1917]/90 backdrop-blur-[8px]" onClick={onClose}></div>
-      {showSuccessToast && (
-        <div className="absolute top-10 left-1/2 -translate-x-1/2 z-[4000] glass px-8 py-4 rounded-full border-[#BF953F] border animate-in slide-in-from-top-10 flex items-center space-x-3">
-          <div className="w-2 h-2 rounded-full gold-bg animate-ping"></div>
-          <p className="text-[10px] font-bold text-[#BF953F] uppercase tracking-[0.3em]">Domínio atualizado com sucesso.</p>
-        </div>
-      )}
-      <div className="relative w-[92%] max-h-[80vh] md:max-w-4xl bg-[#1A0F0E]/95 border border-[#BF953F]/20 rounded-[2.5rem] md:rounded-[3rem] shadow-2xl p-6 md:p-12 overflow-y-auto no-scrollbar mb-[80px] md:mb-0">
-        <header className="flex justify-between items-start mb-6 md:mb-12">
-          <div className="space-y-1">
-             <p className="text-[9px] uppercase tracking-[0.5em] text-[#BF953F] font-bold">Protocolo de Luxo</p>
-             <h3 className="text-xl md:text-4xl font-serif text-white italic">{appointmentToEdit ? 'Editar Atendimento VIP' : 'Registrar Atendimento'}</h3>
-          </div>
-          <button onClick={onClose} className="w-10 h-10 rounded-full glass flex items-center justify-center"><ICONS.Plus className="w-5 h-5 rotate-45" /></button>
+    <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-[#1C1917]/95 backdrop-blur-[8px]" onClick={onClose}></div>
+      <div className="relative w-full max-w-2xl glass border border-[#BF953F]/20 rounded-[3rem] p-8 md:p-12 overflow-y-auto max-h-[90vh] no-scrollbar shadow-[0_30px_100px_rgba(0,0,0,0.8)]">
+        <header className="flex justify-between items-start mb-10">
+           <div className="space-y-1">
+             <p className="text-[9px] uppercase tracking-[0.5em] text-[#BF953F] font-bold">Gestão de Agenda</p>
+             <h3 className="text-2xl font-serif text-white italic">{appointmentToEdit ? 'Refinar Agendamento' : 'Integrar Atendimento'}</h3>
+           </div>
+           <button onClick={onClose} className="w-10 h-10 rounded-full glass border-white/5 flex items-center justify-center text-stone-500 hover:text-white transition-all"><ICONS.Plus className="w-5 h-5 rotate-45" /></button>
         </header>
-        <form onSubmit={handleConfirm} className="space-y-6 md:space-y-10">
+
+        <form onSubmit={handleConfirm} className="space-y-8">
+          {/* Busca de Cliente */}
           <div className="relative">
-            <p className="text-[9px] uppercase tracking-[0.3em] text-stone-500 font-bold mb-3">Cliente VIP</p>
-            <input type="text" value={search} onFocus={() => setShowResults(true)} onChange={(e) => setSearch(e.target.value)} placeholder="Localizar cliente..." className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white outline-none focus:border-[#BF953F]" />
-            {showResults && search && (
-              <div className="absolute top-full left-0 right-0 mt-2 glass rounded-2xl p-4 z-50 max-h-48 overflow-y-auto no-scrollbar shadow-2xl">
-                {filteredClientsSearch.map(c => (
-                  <button key={c.id} type="button" onClick={() => { setSearch(c.name); setShowResults(false); }} className="w-full py-4 px-4 text-left hover:bg-[#BF953F] hover:text-black rounded-xl text-white text-[11px] uppercase tracking-widest">{c.name}</button>
-                ))}
+            <p className="text-[9px] uppercase tracking-widest text-stone-500 mb-2 ml-2">Localizar Cliente VIP</p>
+            <div className="relative">
+              <ICONS.Portfolio className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#BF953F] opacity-40" />
+              <input 
+                type="text" 
+                value={search} 
+                onFocus={() => setShowResults(true)} 
+                onChange={(e) => setSearch(e.target.value)} 
+                placeholder="Pesquisar por nome..." 
+                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-14 pr-5 py-5 text-white outline-none focus:border-[#BF953F]/40 transition-all placeholder:text-stone-700" 
+              />
+            </div>
+            
+            {showResults && (search.length > 0) && (
+              <div className="absolute top-full left-0 right-0 mt-3 glass rounded-3xl p-3 z-50 shadow-2xl border-white/10 animate-in fade-in slide-in-from-top-2 duration-300">
+                {filteredClients.length > 0 ? (
+                  <div className="space-y-1">
+                    {filteredClients.map(c => (
+                      <button 
+                        key={c.id} 
+                        type="button" 
+                        onClick={() => { setSearch(c.name); setShowResults(false); }} 
+                        className="w-full p-4 text-left hover:bg-[#BF953F] hover:text-black rounded-2xl text-white text-[10px] uppercase tracking-widest font-bold transition-all flex justify-between items-center"
+                      >
+                        <span>{c.name}</span>
+                        <span className="text-[8px] opacity-60">Selecionar</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <button 
+                    type="button"
+                    onClick={() => onNavigateToVIP(search)}
+                    className="w-full p-6 text-center rounded-2xl border border-dashed border-[#BF953F]/30 hover:bg-[#BF953F]/10 transition-all group"
+                  >
+                    <p className="text-[10px] text-stone-400 uppercase tracking-widest">Cliente não encontrada</p>
+                    <p className="text-[11px] text-[#BF953F] font-bold uppercase tracking-widest mt-2 group-hover:scale-105 transition-transform">+ Cadastrar {search}</p>
+                  </button>
+                )}
               </div>
             )}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-            <div className="space-y-3">
-              <p className="text-[9px] uppercase tracking-[0.3em] text-stone-500 font-bold mb-3">Procedimento Master</p>
-              <input type="text" value={procedure} onChange={(e) => setProcedure(e.target.value)} placeholder="Ex: Volume Russo..." className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white text-sm outline-none" />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-1">
+              <label className="text-[9px] uppercase tracking-widest text-stone-500 ml-2">Procedimento</label>
+              <input required type="text" value={procedure} onChange={(e) => setProcedure(e.target.value)} placeholder="Ex: Volume Russo" className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white outline-none focus:border-[#BF953F]" />
             </div>
-            <div className="space-y-4">
-               <p className="text-[9px] uppercase tracking-[0.3em] text-stone-500 font-bold mb-3">Investimento VIP</p>
-               <input type="number" value={totalPrice} onChange={(e) => setTotalPrice(e.target.value)} placeholder="0,00" className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white outline-none" />
+            <div className="space-y-1">
+              <label className="text-[9px] uppercase tracking-widest text-stone-500 ml-2">Valor Total (R$)</label>
+              <input required type="number" value={totalPrice} onChange={(e) => setTotalPrice(e.target.value)} placeholder="0,00" className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white outline-none focus:border-[#BF953F]" />
             </div>
           </div>
-          <button type="submit" className="w-full gold-bg text-black py-5 md:py-7 rounded-2xl font-bold uppercase tracking-[0.3em] text-[10px] md:text-[11px] shadow-2xl active:scale-95 transition-all">Confirmar Atendimento Elite</button>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="col-span-1 space-y-1">
+              <label className="text-[9px] uppercase tracking-widest text-stone-500 ml-2">Data</label>
+              <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white outline-none focus:border-[#BF953F] text-xs" />
+            </div>
+            <div className="col-span-1 space-y-1">
+              <label className="text-[9px] uppercase tracking-widest text-stone-500 ml-2">Horário</label>
+              <input type="time" value={selectedTime} onChange={(e) => setSelectedTime(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white outline-none focus:border-[#BF953F] text-xs" />
+            </div>
+            <div className="col-span-1 space-y-1">
+              <label className="text-[9px] uppercase tracking-widest text-stone-500 ml-2">Parcelas</label>
+              <select value={installments} onChange={(e) => setInstallments(parseInt(e.target.value))} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white outline-none focus:border-[#BF953F] text-xs appearance-none">
+                {[1,2,3,4,5,6,10,12].map(n => <option key={n} value={n} className="bg-[#1C1917]">{n}x</option>)}
+              </select>
+            </div>
+            <div className="col-span-1 space-y-1">
+              <label className="text-[9px] uppercase tracking-widest text-stone-500 ml-2">Sinal (R$)</label>
+              <input type="number" value={depositValue} onChange={(e) => setDepositValue(e.target.value)} placeholder="0,00" className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white outline-none focus:border-[#BF953F] text-xs" />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[9px] uppercase tracking-widest text-stone-500 ml-2">Observações do Atendimento</label>
+            <textarea 
+              rows={3} 
+              value={observations} 
+              onChange={(e) => setObservations(e.target.value)} 
+              placeholder="Notas técnicas, mapeamento ou restrições..." 
+              className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white outline-none focus:border-[#BF953F] resize-none text-xs"
+            ></textarea>
+          </div>
+
+          <div className="flex items-center justify-between p-6 rounded-3xl bg-[#BF953F]/5 border border-[#BF953F]/10">
+            <div>
+              <p className="text-[8px] uppercase tracking-[0.3em] text-stone-500 font-bold mb-1">Status de Pagamento</p>
+              <div className="flex space-x-2">
+                {(['pago', 'pendente'] as const).map(s => (
+                  <button 
+                    key={s} 
+                    type="button" 
+                    onClick={() => setPaymentStatus(s)}
+                    className={`px-4 py-1.5 rounded-full text-[8px] uppercase font-bold tracking-widest transition-all ${paymentStatus === s ? 'gold-bg text-black' : 'bg-white/5 text-stone-500'}`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-[8px] uppercase tracking-[0.3em] text-stone-500 font-bold mb-1">Saldo a Receber</p>
+              <p className="text-lg font-num text-white">R$ {Math.max(0, (parseFloat(totalPrice) || 0) - (parseFloat(depositValue) || 0)).toFixed(2)}</p>
+            </div>
+          </div>
+
+          <button type="submit" className="w-full gold-bg text-black py-6 rounded-3xl font-bold uppercase tracking-[0.4em] text-[10px] shadow-[0_10px_30px_rgba(191,149,63,0.3)] hover:scale-[1.02] active:scale-95 transition-all">
+            Confirmar Protocolo Elite
+          </button>
         </form>
       </div>
     </div>
