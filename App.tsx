@@ -8,7 +8,8 @@ import ScheduleTimeline from './components/ScheduleTimeline';
 import FinanceDashboard from './components/FinanceDashboard';
 import MoreTab from './components/MoreTab';
 import LoginPage from './components/LoginPage';
-import { auth } from './services/storage';
+import { auth } from './services/firebase';
+import { onAuthStateChanged, User } from 'firebase/auth';
 
 interface UserProfile {
   name: string;
@@ -20,20 +21,26 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [prefilledClientName, setPrefilledClientName] = useState('');
   const [initialSelectedClientId, setInitialSelectedClientId] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   
-  const [userProfile, setUserProfile] = useState<UserProfile>(() => {
-    const saved = localStorage.getItem('domme_profile');
-    return saved ? JSON.parse(saved) : {
-      name: 'Domme Master',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&h=200&auto=format&fit=crop',
-      title: 'Senior Lash Master'
-    };
+  const [userProfile, setUserProfile] = useState<UserProfile>({
+    name: 'Domme Master',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&h=200&auto=format&fit=crop',
+    title: 'Senior Lash Master'
   });
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      setIsAuthenticated(!!user);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      if (user) {
+        setUserProfile(prev => ({
+          ...prev,
+          name: user.displayName || prev.name,
+          avatar: user.photoURL || prev.avatar
+        }));
+      }
+      setIsLoadingAuth(false);
     });
     return () => unsubscribe();
   }, []);
@@ -43,7 +50,7 @@ const App: React.FC = () => {
   }, [activeTab]);
 
   const renderContent = () => {
-    if (!isAuthenticated) return null;
+    if (!currentUser) return null;
 
     switch (activeTab) {
       case 'dashboard':
@@ -74,11 +81,7 @@ const App: React.FC = () => {
       case 'more':
         return (
           <MoreTab 
-            onUpdateProfile={(p) => {
-              const newProfile = {...userProfile, ...p};
-              setUserProfile(newProfile);
-              localStorage.setItem('domme_profile', JSON.stringify(newProfile));
-            }} 
+            onUpdateProfile={(p) => setUserProfile(prev => ({ ...prev, ...p }))} 
             userProfile={userProfile} 
           />
         );
@@ -87,17 +90,20 @@ const App: React.FC = () => {
     }
   };
 
-  if (isAuthenticated === null) {
+  if (isLoadingAuth) {
     return (
       <div className="min-h-screen bg-[#1C1917] flex flex-col items-center justify-center space-y-6">
-        <div className="w-12 h-12 border border-[#BF953F]/20 border-t-[#BF953F] rounded-full animate-spin"></div>
-        <p className="text-[10px] uppercase tracking-[0.5em] text-stone-500">Acessando Domínio...</p>
+        <div className="w-16 h-16 relative">
+          <div className="absolute inset-0 border-2 border-[#BF953F]/20 rounded-full"></div>
+          <div className="absolute inset-0 border-2 border-[#BF953F] border-t-transparent rounded-full animate-spin"></div>
+        </div>
+        <p className="text-[10px] uppercase tracking-[0.6em] text-[#BF953F] animate-pulse">Autenticando Identidade</p>
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    return <LoginPage onLoginSuccess={() => setIsAuthenticated(true)} />;
+  if (!currentUser) {
+    return <LoginPage onLoginSuccess={() => {}} />;
   }
 
   return (

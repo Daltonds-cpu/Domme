@@ -1,10 +1,10 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { ICONS } from '../constants';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Client, Appointment } from '../types';
 import RegistrationModal from './RegistrationModal';
-import { dataService } from '../services/storage';
+import { dataService } from '../services/firebase';
 
 interface DashboardProps {
   onNavigateToRegistration?: (name: string) => void;
@@ -67,14 +67,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToRegistration, onNavig
     ]);
 
     const todayStr = new Date().toISOString().split('T')[0];
-    setTodayAppts(appts.filter((a: any) => a.date === todayStr).sort((a: any, b: any) => a.time.localeCompare(b.time)));
-    setClients(clis);
-    setReminders(rems);
+    setTodayAppts((appts as any[]).filter((a) => a.date === todayStr).sort((a, b) => a.time.localeCompare(b.time)));
+    setClients(clis as any[]);
+    setReminders(rems as any[]);
 
     if (settings) {
-      setStudioName(settings.name || 'DOMME LASH ELITE');
-      setStudioSubtitle(settings.subtitle || 'O Domínio da Exclusividade');
-      setStudioLogo(settings.logo || '');
+      setStudioName((settings as any).name || 'DOMME LASH ELITE');
+      setStudioSubtitle((settings as any).subtitle || 'O Domínio da Exclusividade');
+      setStudioLogo((settings as any).logo || '');
     }
   };
 
@@ -86,7 +86,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToRegistration, onNavig
     e.preventDefault();
     if (!newReminderText.trim()) return;
     const newItem = await dataService.saveItem('reminders', { text: newReminderText });
-    setReminders(prev => [newItem, ...prev]);
+    setReminders(prev => [newItem as any, ...prev]);
     setNewReminderText('');
     setIsAddingReminder(false);
   };
