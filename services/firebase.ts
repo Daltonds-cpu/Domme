@@ -3,8 +3,6 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, query, where, getDoc, orderBy } from 'firebase/firestore';
 
-// Prioriza chaves do ambiente (VITE_) para compatibilidade com Vercel/Vite/Ambiente de Execução
-// Fix: Replaced import.meta.env with process.env to fix "Property 'env' does not exist on type 'ImportMeta'" errors.
 const firebaseConfig = {
   apiKey: (process.env as any).VITE_FIREBASE_API_KEY || "AIzaSyBLtOil56xWKHUX_xoDgyzyXXlf4aj4rkE",
   authDomain: (process.env as any).VITE_FIREBASE_AUTH_DOMAIN || "domme-5ad27.firebaseapp.com",
@@ -79,5 +77,15 @@ export const dataService = {
   }
 };
 
-export const loginWithGoogle = () => signInWithPopup(auth, googleProvider);
+export const loginWithGoogle = async () => {
+  try {
+    return await signInWithPopup(auth, googleProvider);
+  } catch (error: any) {
+    if (error.code === 'auth/unauthorized-domain') {
+      alert("Acesso restrito: Este domínio precisa ser autorizado no Console do Firebase (domme-5ad27).");
+    }
+    throw error;
+  }
+};
+
 export const logout = () => signOut(auth);

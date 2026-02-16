@@ -23,6 +23,7 @@ const App: React.FC = () => {
   const [initialSelectedClientId, setInitialSelectedClientId] = useState('');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   
   const [userProfile, setUserProfile] = useState<UserProfile>({
     name: 'Domme Master',
@@ -42,6 +43,13 @@ const App: React.FC = () => {
       }
       setIsLoadingAuth(false);
     });
+
+    // Listener para o evento de instalação PWA
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    });
+
     return () => unsubscribe();
   }, []);
 
@@ -83,6 +91,7 @@ const App: React.FC = () => {
           <MoreTab 
             onUpdateProfile={(p) => setUserProfile(prev => ({ ...prev, ...p }))} 
             userProfile={userProfile} 
+            deferredPrompt={deferredPrompt}
           />
         );
       default:
@@ -92,12 +101,12 @@ const App: React.FC = () => {
 
   if (isLoadingAuth) {
     return (
-      <div className="min-h-screen bg-[#1C1917] flex flex-col items-center justify-center space-y-6">
+      <div className="min-h-screen bg-[#1C1917] flex flex-col items-center justify-center space-y-6 text-center px-6">
         <div className="w-16 h-16 relative">
           <div className="absolute inset-0 border-2 border-[#BF953F]/20 rounded-full"></div>
           <div className="absolute inset-0 border-2 border-[#BF953F] border-t-transparent rounded-full animate-spin"></div>
         </div>
-        <p className="text-[10px] uppercase tracking-[0.6em] text-[#BF953F] animate-pulse">Autenticando Identidade</p>
+        <p className="text-[10px] uppercase tracking-[0.6em] text-[#BF953F] animate-pulse">Sincronizando Domínio de Luxo</p>
       </div>
     );
   }

@@ -2,7 +2,7 @@
 {
   "name": "Domme Lash",
   "short_name": "Domme",
-  "description": "The Luxury Domain System",
+  "description": "Sistema de Gestão e Estilo para Lash Designers de Elite.",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#1C1917",
@@ -10,13 +10,13 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23BF953F' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='24' height='24' fill='%231C1917'/%3E%3Cpath d='M2 12C2 12 5 5 12 5C19 5 22 12 22 12C22 12 19 19 12 19C5 19 2 12 2 12Z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Ccircle cx='12' cy='12' r='1' fill='%23BF953F'/%3E%3C/svg%3E",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%231C1917'/%3E%3Cpath d='M80 256c0 0 100-150 176-150s176 150 176 150-100 150-176 150-176-150-176-150z' stroke='%23BF953F' stroke-width='12' fill='none'/%3E%3Ccircle cx='256' cy='256' r='45' stroke='%23BF953F' stroke-width='10' fill='none'/%3E%3Ccircle cx='256' cy='256' r='15' fill='%23BF953F'/%3E%3Cpath d='M256 106c20 0 35-15 35-35s-15-35-35-35-35 15-35 35 15 35 35 35z' fill='%23BF953F' opacity='0.3'/%3E%3C/svg%3E",
       "sizes": "192x192",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23BF953F' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='24' height='24' fill='%231C1917'/%3E%3Cpath d='M2 12C2 12 5 5 12 5C19 5 22 12 22 12C22 12 19 19 12 19C5 19 2 12 2 12Z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Ccircle cx='12' cy='12' r='1' fill='%23BF953F'/%3E%3C/svg%3E",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%231C1917'/%3E%3Cpath d='M80 256c0 0 100-150 176-150s176 150 176 150-100 150-176 150-176-150-176-150z' stroke='%23BF953F' stroke-width='12' fill='none'/%3E%3Ccircle cx='256' cy='256' r='45' stroke='%23BF953F' stroke-width='10' fill='none'/%3E%3Ccircle cx='256' cy='256' r='15' fill='%23BF953F'/%3E%3C/svg%3E",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any"
