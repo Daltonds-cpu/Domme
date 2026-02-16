@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ICONS } from '../constants';
 import { Client, Appointment, DossieEntry } from '../types';
-import { dataService } from '../services/firebase';
+import { dataService } from '../services/storage';
 
 interface RegistrationModalProps {
   isOpen: boolean;
@@ -45,7 +45,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
       setDepositValue(appointmentToEdit.depositValue?.toString() || '');
       setInstallments(appointmentToEdit.installments || 1);
       setProcedure(appointmentToEdit.serviceType);
-      setObservations(appointmentToEdit.status === 'scheduled' ? '' : ''); // Simplificado
+      setObservations(''); 
       setSelectedDate(appointmentToEdit.date);
       setSelectedTime(appointmentToEdit.time);
       setPaymentStatus(appointmentToEdit.paymentStatus || 'pago');
@@ -122,19 +122,11 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
         </header>
 
         <form onSubmit={handleConfirm} className="space-y-8">
-          {/* Busca de Cliente */}
           <div className="relative">
             <p className="text-[9px] uppercase tracking-widest text-stone-500 mb-2 ml-2">Localizar Cliente VIP</p>
             <div className="relative">
               <ICONS.Portfolio className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#BF953F] opacity-40" />
-              <input 
-                type="text" 
-                value={search} 
-                onFocus={() => setShowResults(true)} 
-                onChange={(e) => setSearch(e.target.value)} 
-                placeholder="Pesquisar por nome..." 
-                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-14 pr-5 py-5 text-white outline-none focus:border-[#BF953F]/40 transition-all placeholder:text-stone-700" 
-              />
+              <input type="text" value={search} onFocus={() => setShowResults(true)} onChange={(e) => setSearch(e.target.value)} placeholder="Pesquisar por nome..." className="w-full bg-white/5 border border-white/10 rounded-2xl pl-14 pr-5 py-5 text-white outline-none focus:border-[#BF953F]/40 transition-all placeholder:text-stone-700" />
             </div>
             
             {showResults && (search.length > 0) && (
@@ -142,23 +134,14 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
                 {filteredClients.length > 0 ? (
                   <div className="space-y-1">
                     {filteredClients.map(c => (
-                      <button 
-                        key={c.id} 
-                        type="button" 
-                        onClick={() => { setSearch(c.name); setShowResults(false); }} 
-                        className="w-full p-4 text-left hover:bg-[#BF953F] hover:text-black rounded-2xl text-white text-[10px] uppercase tracking-widest font-bold transition-all flex justify-between items-center"
-                      >
+                      <button key={c.id} type="button" onClick={() => { setSearch(c.name); setShowResults(false); }} className="w-full p-4 text-left hover:bg-[#BF953F] hover:text-black rounded-2xl text-white text-[10px] uppercase tracking-widest font-bold transition-all flex justify-between items-center">
                         <span>{c.name}</span>
                         <span className="text-[8px] opacity-60">Selecionar</span>
                       </button>
                     ))}
                   </div>
                 ) : (
-                  <button 
-                    type="button"
-                    onClick={() => onNavigateToVIP(search)}
-                    className="w-full p-6 text-center rounded-2xl border border-dashed border-[#BF953F]/30 hover:bg-[#BF953F]/10 transition-all group"
-                  >
+                  <button type="button" onClick={() => onNavigateToVIP(search)} className="w-full p-6 text-center rounded-2xl border border-dashed border-[#BF953F]/30 hover:bg-[#BF953F]/10 transition-all group">
                     <p className="text-[10px] text-stone-400 uppercase tracking-widest">Cliente não encontrada</p>
                     <p className="text-[11px] text-[#BF953F] font-bold uppercase tracking-widest mt-2 group-hover:scale-105 transition-transform">+ Cadastrar {search}</p>
                   </button>
@@ -199,42 +182,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-[9px] uppercase tracking-widest text-stone-500 ml-2">Observações do Atendimento</label>
-            <textarea 
-              rows={3} 
-              value={observations} 
-              onChange={(e) => setObservations(e.target.value)} 
-              placeholder="Notas técnicas, mapeamento ou restrições..." 
-              className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white outline-none focus:border-[#BF953F] resize-none text-xs"
-            ></textarea>
-          </div>
-
-          <div className="flex items-center justify-between p-6 rounded-3xl bg-[#BF953F]/5 border border-[#BF953F]/10">
-            <div>
-              <p className="text-[8px] uppercase tracking-[0.3em] text-stone-500 font-bold mb-1">Status de Pagamento</p>
-              <div className="flex space-x-2">
-                {(['pago', 'pendente'] as const).map(s => (
-                  <button 
-                    key={s} 
-                    type="button" 
-                    onClick={() => setPaymentStatus(s)}
-                    className={`px-4 py-1.5 rounded-full text-[8px] uppercase font-bold tracking-widest transition-all ${paymentStatus === s ? 'gold-bg text-black' : 'bg-white/5 text-stone-500'}`}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-[8px] uppercase tracking-[0.3em] text-stone-500 font-bold mb-1">Saldo a Receber</p>
-              <p className="text-lg font-num text-white">R$ {Math.max(0, (parseFloat(totalPrice) || 0) - (parseFloat(depositValue) || 0)).toFixed(2)}</p>
-            </div>
-          </div>
-
-          <button type="submit" className="w-full gold-bg text-black py-6 rounded-3xl font-bold uppercase tracking-[0.4em] text-[10px] shadow-[0_10px_30px_rgba(191,149,63,0.3)] hover:scale-[1.02] active:scale-95 transition-all">
-            Confirmar Protocolo Elite
-          </button>
+          <button type="submit" className="w-full gold-bg text-black py-6 rounded-3xl font-bold uppercase tracking-[0.4em] text-[10px] shadow-[0_10px_30px_rgba(191,149,63,0.3)] hover:scale-[1.02] active:scale-95 transition-all">Confirmar Protocolo Elite</button>
         </form>
       </div>
     </div>

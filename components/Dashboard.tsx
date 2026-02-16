@@ -4,7 +4,7 @@ import { ICONS } from '../constants';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Client, Appointment } from '../types';
 import RegistrationModal from './RegistrationModal';
-import { dataService, auth } from '../services/firebase';
+import { dataService } from '../services/storage';
 
 interface DashboardProps {
   onNavigateToRegistration?: (name: string) => void;
@@ -15,15 +15,6 @@ interface Reminder {
   id: string;
   text: string;
 }
-
-const data = [
-  { name: 'S', rev: 4000 },
-  { name: 'T', rev: 3500 },
-  { name: 'Q', rev: 6200 },
-  { name: 'Q', rev: 5100 },
-  { name: 'S', rev: 9200 },
-  { name: 'S', rev: 11000 },
-];
 
 const TimeBanner: React.FC = () => {
   const [now, setNow] = useState(new Date());

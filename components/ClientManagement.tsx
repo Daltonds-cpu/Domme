@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ICONS } from '../constants';
 import { Client, EyeShape, DossieEntry, AnalysisData } from '../types';
-import { dataService } from '../services/firebase';
+import { dataService } from '../services/storage';
 
 interface ClientManagementProps {
   prefilledName?: string;
@@ -19,7 +19,6 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
   const [clientToDelete, setClientToDelete] = useState<string | null>(null);
   
   const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
-  // Adicionado estado para controlar o ID da entrada de análise sendo visualizada
   const [currentAnalysisEntryId, setCurrentAnalysisEntryId] = useState<string | null>(null);
   
   const [analysisForm, setAnalysisForm] = useState<AnalysisData>({
@@ -162,34 +161,10 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
                 <p className="text-[8px] uppercase tracking-widest text-[#BF953F]/60 font-bold">{client.eyeShape} • {client.lastVisit}</p>
               </div>
 
-              {/* Indicadores Sociais Dinâmicos */}
               <div className="flex justify-center items-center space-x-6 pt-2">
-                {/* WhatsApp */}
-                <a 
-                  href={client.phone ? `https://wa.me/${client.phone.replace(/\D/g, '')}` : '#'} 
-                  onClick={(e) => !client.phone && e.preventDefault()}
-                  className={`transition-all duration-500 ${client.phone ? 'text-[#25D366] drop-shadow-[0_0_8px_rgba(37,211,102,0.4)] scale-110' : 'text-stone-700 grayscale opacity-30'}`}
-                >
-                  <ICONS.WhatsApp className="w-5 h-5" />
-                </a>
-                
-                {/* Instagram */}
-                <a 
-                  href={client.instagram ? `https://instagram.com/${cleanHandle(client.instagram)}` : '#'} 
-                  onClick={(e) => !client.instagram && e.preventDefault()}
-                  className={`transition-all duration-500 ${client.instagram ? 'text-[#E4405F] drop-shadow-[0_0_8px_rgba(228,64,95,0.4)] scale-110' : 'text-stone-700 grayscale opacity-30'}`}
-                >
-                  <ICONS.Instagram className="w-5 h-5" />
-                </a>
-
-                {/* Facebook */}
-                <a 
-                  href={client.facebook ? `https://facebook.com/${cleanHandle(client.facebook)}` : '#'} 
-                  onClick={(e) => !client.facebook && e.preventDefault()}
-                  className={`transition-all duration-500 ${client.facebook ? 'text-[#1877F2] drop-shadow-[0_0_8px_rgba(24,119,242,0.4)] scale-110' : 'text-stone-700 grayscale opacity-30'}`}
-                >
-                  <ICONS.Facebook className="w-5 h-5" />
-                </a>
+                <a href={client.phone ? `https://wa.me/${client.phone.replace(/\D/g, '')}` : '#'} onClick={(e) => !client.phone && e.preventDefault()} className={`transition-all duration-500 ${client.phone ? 'text-[#25D366] drop-shadow-[0_0_8px_rgba(37,211,102,0.4)] scale-110' : 'text-stone-700 grayscale opacity-30'}`}><ICONS.WhatsApp className="w-5 h-5" /></a>
+                <a href={client.instagram ? `https://instagram.com/${cleanHandle(client.instagram)}` : '#'} onClick={(e) => !client.instagram && e.preventDefault()} className={`transition-all duration-500 ${client.instagram ? 'text-[#E4405F] drop-shadow-[0_0_8px_rgba(228,64,95,0.4)] scale-110' : 'text-stone-700 grayscale opacity-30'}`}><ICONS.Instagram className="w-5 h-5" /></a>
+                <a href={client.facebook ? `https://facebook.com/${cleanHandle(client.facebook)}` : '#'} onClick={(e) => !client.facebook && e.preventDefault()} className={`transition-all duration-500 ${client.facebook ? 'text-[#1877F2] drop-shadow-[0_0_8px_rgba(24,119,242,0.4)] scale-110' : 'text-stone-700 grayscale opacity-30'}`}><ICONS.Facebook className="w-5 h-5" /></a>
               </div>
 
               <button onClick={() => setSelectedClientForDossie(client)} className="w-full py-3 rounded-full border border-white/5 text-[9px] font-bold uppercase tracking-widest text-stone-400 hover:text-white hover:border-[#BF953F]/40 transition-all">Dossiê Completo</button>
@@ -198,7 +173,6 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
         ))}
       </div>
 
-      {/* Modal de Cadastro/Edição */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/95 backdrop-blur-[10px]" onClick={() => setIsModalOpen(false)}></div>
@@ -261,7 +235,6 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
         </div>
       )}
 
-      {/* Modal de Dossiê Completo */}
       {selectedClientForDossie && (
         <div className="fixed inset-0 z-[4000] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/98" onClick={() => setSelectedClientForDossie(null)}></div>
@@ -313,51 +286,6 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Análise Técnica */}
-      {isAnalysisModalOpen && (
-        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/95" onClick={() => setIsAnalysisModalOpen(false)}></div>
-          <div className="relative w-full max-w-lg glass p-10 rounded-[3rem] border-[#BF953F]/40 animate-in zoom-in-95 duration-500 overflow-y-auto max-h-[90vh]">
-            <header className="text-center mb-8">
-              <p className="text-[9px] uppercase tracking-[0.5em] text-[#BF953F] font-bold">Protocolo Técnico</p>
-              <h3 className="text-2xl font-serif text-white italic">Ficha de Análise</h3>
-            </header>
-            <div className="space-y-8">
-              {[
-                { label: 'Está de rímel?', key: 'isWearingMascara' },
-                { label: 'É gestante?', key: 'isPregnant' },
-                { label: 'Alergias?', key: 'hasAllergies' }
-              ].map((q) => (
-                <div key={q.key} className="flex justify-between items-center">
-                  <p className="text-[11px] text-white/80 font-serif italic">{q.label}</p>
-                  <div className="flex glass p-1 rounded-full w-24">
-                    <button onClick={() => setAnalysisForm(prev => ({ ...prev, [q.key]: true }))} className={`flex-1 py-1 rounded-full text-[8px] uppercase font-bold ${analysisForm[q.key as keyof AnalysisData] === true ? 'gold-bg text-black' : 'text-stone-500'}`}>Sim</button>
-                    <button onClick={() => setAnalysisForm(prev => ({ ...prev, [q.key]: false }))} className={`flex-1 py-1 rounded-full text-[8px] uppercase font-bold ${analysisForm[q.key as keyof AnalysisData] === false ? 'gold-bg text-black' : 'text-stone-500'}`}>Não</button>
-                  </div>
-                </div>
-              ))}
-              <div className="space-y-4">
-                <p className="text-[9px] uppercase tracking-widest text-stone-500 font-bold">Assinatura Digital</p>
-                <div className="h-40 w-full bg-[#1C1917]/80 rounded-[1.5rem] border border-[#BF953F]/30 overflow-hidden">
-                   <canvas ref={canvasRef} width={400} height={160} onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={() => setIsDrawing(false)} onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={() => setIsDrawing(false)} className="w-full h-full" />
-                </div>
-              </div>
-              <button onClick={() => setIsAnalysisModalOpen(false)} className="w-full gold-bg text-black py-5 rounded-2xl font-bold uppercase tracking-widest text-[9px]">Validar Ficha</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isDeleteConfirmOpen && (
-        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/95" onClick={() => setIsDeleteConfirmOpen(false)}></div>
-          <div className="relative glass p-10 rounded-[2.5rem] border-red-500/20 text-center space-y-8 max-w-xs w-full">
-            <h4 className="text-xl font-serif text-white italic">Remover Perfil?</h4>
-            <button onClick={confirmDelete} className="w-full py-4 rounded-xl bg-red-600 text-white font-bold uppercase tracking-widest text-[9px]">Confirmar Exclusão</button>
           </div>
         </div>
       )}

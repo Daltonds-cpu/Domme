@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { ICONS } from '../constants';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Appointment, Client } from '../types';
-import { dataService } from '../services/firebase';
+import { dataService } from '../services/storage';
 
 interface Transaction {
   id: string;
@@ -17,21 +17,6 @@ interface Transaction {
   inflow: number; 
   receivable: number; 
 }
-
-const useCountUp = (target: number, duration: number = 800) => {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    let start: number | null = null;
-    const animate = (timestamp: number) => {
-      if (!start) start = timestamp;
-      const progress = Math.min((timestamp - start) / duration, 1);
-      setCount(prev => progress === 1 ? target : target * progress);
-      if (progress < 1) requestAnimationFrame(animate);
-    };
-    requestAnimationFrame(animate);
-  }, [target, duration]);
-  return count;
-};
 
 const FinanceDashboard: React.FC = () => {
   const [filter, setFilter] = useState<'dia' | 'semana' | 'mes' | 'ano'>('mes');
@@ -91,7 +76,6 @@ const FinanceDashboard: React.FC = () => {
     const updatedAppt = { ...appt, paymentStatus: 'pago', depositValue: appt.price };
     await dataService.saveItem('appointments', updatedAppt);
     
-    // Atualiza dossiê da cliente no Firestore
     const client = clients.find(c => c.id === appt.clientId);
     if (client) {
       const updatedDossie = client.dossie.map(d => 

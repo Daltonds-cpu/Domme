@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Client, Appointment } from '../types';
 import RegistrationModal from './RegistrationModal';
 import { ICONS } from '../constants';
-import { dataService } from '../services/firebase';
+import { dataService } from '../services/storage';
 
 interface ScheduleTimelineProps {
   onNavigateToClient?: (clientId: string) => void;
