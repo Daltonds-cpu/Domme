@@ -1,7 +1,7 @@
 
 /**
  * Local Data Service - Domme Lash Elite
- * Substitui o Firebase para persistência local segura e rápida.
+ * Implementação via LocalStorage para garantir estabilidade e funcionamento offline.
  */
 
 const getStore = (name: string): any[] => {
@@ -13,14 +13,23 @@ const setStore = (name: string, data: any[]) => {
   localStorage.setItem(`domme_v1_${name}`, JSON.stringify(data));
 };
 
+// Simulação de objeto de autenticação para manter compatibilidade com o restante do código
 export const auth = {
-  currentUser: { uid: 'local-master-user', displayName: 'Domme Master' }
+  currentUser: { uid: 'local-master-user', displayName: 'Domme Master', photoURL: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&h=200&auto=format&fit=crop' }
+};
+
+export const loginWithGoogle = async () => {
+  // Simulação de login bem-sucedido
+  return auth.currentUser;
+};
+
+export const logout = () => {
+  localStorage.removeItem('domme_auth_active');
+  window.location.reload();
 };
 
 export const dataService = {
   async getCollection(collectionName: string) {
-    // Simula delay de rede para manter a sensação de sistema robusto
-    await new Promise(resolve => setTimeout(resolve, 100));
     return getStore(collectionName);
   },
 
