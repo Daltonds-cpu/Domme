@@ -1,43 +1,50 @@
 
 export interface AnalysisData {
+  // Avaliação de Saúde
   isWearingMascara: boolean;
   isPregnant: boolean;
-  recentProcedures: boolean;
   hasAllergies: boolean;
-  hasVisionIssues: boolean;
-  needsSpecialProcedure: boolean;
+  thyroidGlaucomaIssues: boolean;
+  oncologicalTreatment: boolean;
+  recentProcedures: boolean;
+  
+  // Ficha Técnica
+  technique: string; // Fio a Fio, Volume Russo, etc.
+  mapping: string; // Boneca, Esquilo, Gatinho, etc.
+  style: string;
+  curvature: string;
+  thickness: string;
+  adhesiveUsed: string;
+  
+  // Notas e Consentimento
   additionalNotes: string;
-  signature?: string; // Base64 da assinatura
+  signature?: string; // Base64 da assinatura manual
 }
 
 export interface DossieEntry {
   id: string;
   date: string;
-  time?: string;
-  technique: string;
-  curvature: string;
-  thickness: string;
-  price: number;
-  notes: string;
-  photos: string[];
-  analysis?: AnalysisData;
+  time: string;
+  procedure: string;
+  value: number;
+  paymentMethod: string;
+  analysis: AnalysisData;
 }
 
 export interface Client {
   id: string;
+  userId: string;
   name: string;
   phone: string;
   email: string;
   instagram?: string;
   facebook?: string;
-  birthday: string; // Format: YYYY-MM-DD
-  lastVisit: string;
+  birthday: string;
   eyeShape: EyeShape;
   notes: string;
-  mimos: string; // Birthday gifts or special treatment
-  gallery: string[]; // URLs to high-res images
-  lifestyleNotes: string; // Deterministic lifestyle details
+  gallery: string[];
   dossie: DossieEntry[];
+  lastVisit: string;
 }
 
 export enum EyeShape {
@@ -51,15 +58,12 @@ export enum EyeShape {
 
 export interface Appointment {
   id: string;
+  userId: string;
   clientId: string;
-  date: string; // YYYY-MM-DD
-  time: string; // HH:MM
-  durationMinutes: number;
+  date: string;
+  time: string;
   serviceType: string;
-  status: 'scheduled' | 'completed' | 'cancelled';
   price: number;
-  depositValue?: number;
-  installments?: number;
-  paymentMethod?: 'Dinheiro' | 'PIX' | 'Cartão de Crédito' | 'Cartão de Débito';
   paymentStatus?: 'pago' | 'parcial' | 'pendente';
+  status: 'scheduled' | 'completed' | 'cancelled';
 }

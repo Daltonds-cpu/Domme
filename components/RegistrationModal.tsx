@@ -88,16 +88,29 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
     await dataService.saveItem('appointments', apptData);
 
     if (selectedClient) {
+      // Fix: Correcting the DossieEntry object to match the interface definition from types.ts
       const newDossieEntry: DossieEntry = {
         id: Math.random().toString(36).substr(2, 9),
         date: new Date(selectedDate).toLocaleDateString('pt-BR'),
         time: selectedTime,
-        technique: procedure || 'Atendimento Personalizado',
-        curvature: '-', 
-        thickness: '-', 
-        price: totalVal, 
-        notes: `${observations}. Parcelamento: ${installments}x. Sinal: R$ ${depVal}.`, 
-        photos: []
+        procedure: procedure || 'Atendimento Personalizado',
+        value: totalVal,
+        paymentMethod: installments > 1 ? 'CARTÃO' : 'PIX',
+        analysis: {
+          isWearingMascara: false,
+          isPregnant: false,
+          hasAllergies: false,
+          thyroidGlaucomaIssues: false,
+          oncologicalTreatment: false,
+          recentProcedures: false,
+          technique: procedure || 'Atendimento Personalizado',
+          mapping: '-',
+          style: '-',
+          curvature: '-',
+          thickness: '-',
+          adhesiveUsed: '-',
+          additionalNotes: `${observations}. Parcelamento: ${installments}x. Sinal: R$ ${depVal}.`,
+        }
       };
       const updatedDossie = [newDossieEntry, ...(selectedClient.dossie || [])];
       await dataService.saveItem('clients', { ...selectedClient, dossie: updatedDossie, lastVisit: 'Recentemente' });

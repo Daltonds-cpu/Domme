@@ -1,10 +1,11 @@
 
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, query, where, getDoc } from 'firebase/firestore';
+import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, query, where, getDoc, orderBy } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBLtOil56xWKHUX_xoDgyzyXXlf4aj4rkE",
+  // Fix: Using process.env to avoid ImportMeta type errors in this environment
+  apiKey: (process.env as any).VITE_FIREBASE_API_KEY || "AIzaSyBLtOil56xWKHUX_xoDgyzyXXlf4aj4rkE",
   authDomain: "domme-5ad27.firebaseapp.com",
   projectId: "domme-5ad27",
   storageBucket: "domme-5ad27.firebasestorage.app",
@@ -17,9 +18,6 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
-/**
- * Serviço de Dados com Isolamento por Usuário
- */
 export const dataService = {
   async getCollection(collectionName: string) {
     const user = auth.currentUser;
@@ -38,20 +36,37 @@ export const dataService = {
     }
   },
 
+  // Fix: Added getItem method to support Dashboard and other components
   async getItem(collectionName: string, id: string) {
     const user = auth.currentUser;
     if (!user) return null;
-    
     try {
       const docRef = doc(db, collectionName, id);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists() && docSnap.data().userId === user.uid) {
-        return { id: docSnap.id, ...docSnap.data() };
+      const snap = await getDoc(docRef);
+      if (snap.exists() && (snap.data() as any).userId === user.uid) {
+        return { id: snap.id, ...snap.data() };
       }
       return null;
     } catch (error) {
-      console.error(`Erro ao buscar item:`, error);
+      console.error(`Erro ao buscar item em ${collectionName}:`, error);
       return null;
+    }
+  },
+
+  async getClientHistory(clientId: string) {
+    const user = auth.currentUser;
+    if (!user) return [];
+    
+    try {
+      const clientRef = doc(db, 'clients', clientId);
+      const snap = await getDoc(clientRef);
+      if (snap.exists() && (snap.data() as any).userId === user.uid) {
+        return (snap.data() as any).dossie || [];
+      }
+      return [];
+    } catch (error) {
+      console.error("Erro ao buscar histórico:", error);
+      return [];
     }
   },
 
@@ -65,7 +80,7 @@ export const dataService = {
     const payload = { 
       ...item, 
       id, 
-      userId: user.uid, // Vínculo de propriedade do dado
+      userId: user.uid,
       updatedAt: new Date().toISOString() 
     };
 
@@ -76,9 +91,7 @@ export const dataService = {
   async deleteItem(collectionName: string, id: string) {
     const user = auth.currentUser;
     if (!user) return;
-    
     const docRef = doc(db, collectionName, id);
-    // Nota: Regras de segurança no Firebase Console devem validar se o UID coincide
     await deleteDoc(docRef);
   }
 };
