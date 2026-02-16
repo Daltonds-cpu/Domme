@@ -9,16 +9,19 @@ interface LoginPageProps {
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
 
   const handleLogin = async () => {
     setIsLoading(true);
+    setErrorDetails(null);
     try {
-      // Autenticação Real via Firebase Google Auth
+      // Autenticação Real via Firebase Google Auth usando signInWithPopup
       await signInWithPopup(auth, googleProvider);
       onLoginSuccess();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro na autenticação Firebase:", error);
-      alert("Falha na conexão com o Protocolo de Segurança. Verifique sua conta Google.");
+      const errorCode = error.code || 'unknown-error';
+      setErrorDetails(`Protocolo Recusado: ${errorCode}`);
       setIsLoading(false);
     }
   };
@@ -50,8 +53,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           <p className="text-[10px] uppercase tracking-[0.5em] text-stone-500 font-bold">The Luxury Domain System</p>
         </div>
 
-        {/* Login Button */}
-        <div className="pt-6">
+        {/* Login Button and Error Feedback */}
+        <div className="pt-6 space-y-4">
           <button
             onClick={handleLogin}
             disabled={isLoading}
@@ -73,6 +76,17 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               {isLoading ? 'Conectando ao Firebase...' : 'Entrar com Google'}
             </span>
           </button>
+
+          {errorDetails && (
+            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+               <p className="text-[10px] text-red-400 font-num tracking-widest uppercase font-light">
+                 {errorDetails}
+               </p>
+               <p className="text-[8px] text-stone-600 uppercase tracking-tighter mt-1">
+                 Contate o suporte se o erro persistir.
+               </p>
+            </div>
+          )}
         </div>
 
         {/* Footer info */}

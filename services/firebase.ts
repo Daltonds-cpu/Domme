@@ -5,10 +5,11 @@ import { getFirestore } from 'firebase/firestore';
 
 /**
  * Configuração do Firebase para o Domme Lash Elite.
+ * O authDomain foi fixado conforme exigência do protocolo de segurança.
  */
 const firebaseConfig = {
   apiKey: (process as any).env.VITE_FIREBASE_API_KEY || "AIzaSy...", 
-  authDomain: (process as any).env.VITE_FIREBASE_AUTH_DOMAIN,
+  authDomain: "domme-e766b.firebaseapp.com",
   projectId: (process as any).env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: (process as any).env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: (process as any).env.VITE_FIREBASE_MESSAGING_SENDER_ID,
