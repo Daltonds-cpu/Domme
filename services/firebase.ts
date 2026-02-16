@@ -1,11 +1,11 @@
-
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 /**
  * Configuração do Firebase para o Domme Lash Elite.
- * O authDomain foi fixado conforme exigência do protocolo de segurança.
+ * Restaurada para a versão estável utilizando process.env.
+ * O authDomain permanece fixo para garantir a integridade do domínio de autenticação.
  */
 const firebaseConfig = {
   apiKey: (process as any).env.VITE_FIREBASE_API_KEY || "AIzaSy...", 
