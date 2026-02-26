@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ICONS } from '../constants';
 import { Client, EyeShape, DossieEntry, AnalysisData } from '../types';
-import { dataService } from '../services/firebase';
+import { auth, dataService } from '../services/firebase';
 import SignatureCanvas from './SignatureCanvas';
 
 interface ClientManagementProps {
@@ -18,6 +18,8 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
   const [selectedClientForDossie, setSelectedClientForDossie] = useState<Client | null>(null);
   const [isNewAtendimentoOpen, setIsNewAtendimentoOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
   // Estados para o Formulário de Novo Atendimento
   const [newEntry, setNewEntry] = useState<Partial<DossieEntry>>({
@@ -64,15 +66,51 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
   };
 
   const handleSaveClient = async () => {
-    if (!formClient.name || isUploading) return;
-    const saved = await dataService.saveItem('clients', {
-      ...formClient,
-      lastVisit: 'Novo'
-    });
-    setClients(prev => [saved as Client, ...prev]);
-    setIsModalOpen(false);
-    setFormClient({ name: '', phone: '', email: '', birthday: '', eyeShape: EyeShape.ALMOND, gallery: [], dossie: [], notes: '' });
-    if (onClearPrefill) onClearPrefill();
+    if (!formClient.name || isSaving) return;
+    
+    setIsSaving(true);
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        alert("Sessão expirada. Por favor, faça login novamente.");
+        return;
+      }
+
+      let photoUrl = formClient.photoUrl || '';
+      let gallery = formClient.gallery || [];
+
+      // 1. Upload da imagem se houver arquivo selecionado
+      if (selectedFile) {
+        const url = await dataService.uploadImage(selectedFile, 'new_client');
+        photoUrl = url;
+        gallery = [url, ...gallery];
+      }
+
+      // 2. Salvar no Firestore com userId garantido
+      const saved = await dataService.saveItem('clients', {
+        ...formClient,
+        photoUrl,
+        gallery,
+        lastVisit: 'Novo'
+      });
+
+      setClients(prev => [saved as Client, ...prev]);
+      setIsModalOpen(false);
+      
+      // Reset do formulário
+      setFormClient({ 
+        name: '', phone: '', email: '', birthday: '', 
+        eyeShape: EyeShape.ALMOND, gallery: [], dossie: [], 
+        notes: '', photoUrl: '' 
+      });
+      setSelectedFile(null);
+      if (onClearPrefill) onClearPrefill();
+    } catch (error) {
+      console.error("Erro ao salvar cliente:", error);
+      alert("Erro crítico ao salvar o perfil VIP. Verifique sua conexão e tente novamente.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, isGallery: boolean = true) => {
@@ -108,25 +146,33 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
   };
 
   const handleSaveEntry = async () => {
-    if (!selectedClientForDossie || !newEntry.procedure || isUploading) return;
+    if (!selectedClientForDossie || !newEntry.procedure || isUploading || isSaving) return;
 
-    const entry: DossieEntry = {
-      ...newEntry as DossieEntry,
-      id: Math.random().toString(36).substr(2, 9),
-      date: new Date().toLocaleDateString('pt-BR'),
-      time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-    };
+    setIsSaving(true);
+    try {
+      const entry: DossieEntry = {
+        ...newEntry as DossieEntry,
+        id: Math.random().toString(36).substr(2, 9),
+        date: new Date().toLocaleDateString('pt-BR'),
+        time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      };
 
-    const updatedClient = {
-      ...selectedClientForDossie,
-      dossie: [entry, ...(selectedClientForDossie.dossie || [])],
-      lastVisit: 'Hoje'
-    };
+      const updatedClient = {
+        ...selectedClientForDossie,
+        dossie: [entry, ...(selectedClientForDossie.dossie || [])],
+        lastVisit: 'Hoje'
+      };
 
-    await dataService.saveItem('clients', updatedClient);
-    setSelectedClientForDossie(updatedClient);
-    setIsNewAtendimentoOpen(false);
-    loadClients();
+      await dataService.saveItem('clients', updatedClient);
+      setSelectedClientForDossie(updatedClient);
+      setIsNewAtendimentoOpen(false);
+      loadClients();
+    } catch (error) {
+      console.error("Erro ao salvar atendimento:", error);
+      alert("Erro ao salvar a ficha técnica. Tente novamente.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDeleteClient = async (id: string) => {
@@ -409,7 +455,13 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
                 <SignatureCanvas onSave={(sig) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, signature: sig}})} />
               </div>
 
-              <button onClick={handleSaveEntry} className="w-full gold-bg text-black py-6 rounded-[2rem] font-bold uppercase tracking-[0.4em] text-[10px] shadow-2xl hover:scale-[1.02] transition-all">Efetivar Atendimento Elite</button>
+              <button 
+                onClick={handleSaveEntry} 
+                disabled={isSaving}
+                className={`w-full gold-bg text-black py-6 rounded-[2rem] font-bold uppercase tracking-[0.4em] text-[10px] shadow-2xl transition-all ${isSaving ? 'opacity-70 cursor-wait' : 'hover:scale-[1.02]'}`}
+              >
+                {isSaving ? 'Processando Ficha...' : 'Efetivar Atendimento Elite'}
+              </button>
             </div>
           </div>
         </div>
@@ -456,22 +508,37 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
                 <div className="flex justify-between items-center">
                   <h4 className="text-[10px] uppercase tracking-widest text-stone-500">Foto de Referência</h4>
                   <label className="cursor-pointer gold-bg text-black px-4 py-2 rounded-full text-[8px] font-bold uppercase tracking-widest hover:scale-105 transition-all">
-                    {isUploading ? 'Enviando...' : 'Upload Foto'}
-                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, false)} disabled={isUploading} />
+                    {selectedFile ? 'Foto Selecionada' : 'Selecionar Foto'}
+                    <input type="file" className="hidden" accept="image/*" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} disabled={isSaving} />
                   </label>
                 </div>
-                {formClient.gallery && formClient.gallery.length > 0 && (
-                  <div className="grid grid-cols-4 gap-4">
-                    {formClient.gallery.map((img, i) => (
+                
+                <div className="grid grid-cols-4 gap-4">
+                  {selectedFile && (
+                    <div className="aspect-square rounded-xl overflow-hidden border border-[#BF953F]/40 relative group animate-pulse">
+                      <img src={URL.createObjectURL(selectedFile)} className="w-full h-full object-cover opacity-50" alt="Preview" />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <p className="text-[7px] uppercase tracking-widest text-white font-bold text-center px-2">Aguardando Salvamento</p>
+                      </div>
+                    </div>
+                  )}
+                  {formClient.gallery && formClient.gallery.length > 0 && (
+                    formClient.gallery.map((img, i) => (
                       <div key={i} className="aspect-square rounded-xl overflow-hidden border border-white/10">
                         <img src={img} className="w-full h-full object-cover" alt="" />
                       </div>
-                    ))}
-                  </div>
-                )}
+                    ))
+                  )}
+                </div>
               </div>
 
-              <button onClick={handleSaveClient} className="w-full gold-bg text-black py-6 rounded-[2rem] font-bold uppercase tracking-[0.4em] text-[10px] shadow-2xl hover:scale-[1.02] transition-all">Efetivar Cadastro VIP</button>
+              <button 
+                onClick={handleSaveClient} 
+                disabled={isSaving}
+                className={`w-full gold-bg text-black py-6 rounded-[2rem] font-bold uppercase tracking-[0.4em] text-[10px] shadow-2xl transition-all ${isSaving ? 'opacity-70 cursor-wait' : 'hover:scale-[1.02]'}`}
+              >
+                {isSaving ? 'Processando Domínio...' : 'Efetivar Cadastro VIP'}
+              </button>
             </div>
           </div>
         </div>
