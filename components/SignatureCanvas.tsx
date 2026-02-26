@@ -1,5 +1,5 @@
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 
 interface SignatureCanvasProps {
   onSave: (base64: string) => void;
@@ -10,6 +10,67 @@ const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSave, onClear }) =>
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
 
+  const getCoordinates = useCallback((e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent): { x: number, y: number } | null => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    
+    let clientX, clientY;
+    if ('touches' in e) {
+      if (e.touches.length === 0) return null;
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = (e as MouseEvent).clientX;
+      clientY = (e as MouseEvent).clientY;
+    }
+
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top
+    };
+  }, []);
+
+  const startDrawing = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    const coords = getCoordinates(e);
+    if (!coords) return;
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.beginPath();
+      ctx.moveTo(coords.x, coords.y);
+      setIsDrawing(true);
+    }
+  }, [getCoordinates]);
+
+  const draw = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    if (!isDrawing) return;
+    const coords = getCoordinates(e);
+    if (!coords) return;
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.lineTo(coords.x, coords.y);
+      ctx.stroke();
+    }
+    if ('touches' in e) {
+      if (e.cancelable) e.preventDefault();
+    }
+  }, [isDrawing, getCoordinates]);
+
+  const stopDrawing = useCallback(() => {
+    if (!isDrawing) return;
+    setIsDrawing(false);
+    const canvas = canvasRef.current;
+    if (canvas) {
+      onSave(canvas.toDataURL());
+    }
+  }, [isDrawing, onSave]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
@@ -18,67 +79,47 @@ const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSave, onClear }) =>
         ctx.strokeStyle = '#BF953F';
         ctx.lineWidth = 2;
         ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
       }
+
+      // Prevent scrolling when touching the canvas
+      const preventDefault = (e: TouchEvent) => {
+        if (e.target === canvas && e.cancelable) {
+          e.preventDefault();
+        }
+      };
+      document.addEventListener('touchstart', preventDefault, { passive: false });
+      document.addEventListener('touchmove', preventDefault, { passive: false });
+      document.addEventListener('touchend', preventDefault, { passive: false });
+
+      return () => {
+        document.removeEventListener('touchstart', preventDefault);
+        document.removeEventListener('touchmove', preventDefault);
+        document.removeEventListener('touchend', preventDefault);
+      };
     }
   }, []);
-
-  const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = ('touches' in e ? e.touches[0].clientX : e.clientX) - rect.left;
-    const y = ('touches' in e ? e.touches[0].clientY : e.clientY) - rect.top;
-    
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      setIsDrawing(true);
-    }
-  };
-
-  const draw = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!isDrawing) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = ('touches' in e ? e.touches[0].clientX : e.clientX) - rect.left;
-    const y = ('touches' in e ? e.touches[0].clientY : e.clientY) - rect.top;
-    
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.lineTo(x, y);
-      ctx.stroke();
-    }
-    if ('touches' in e) e.preventDefault();
-  };
-
-  const stopDrawing = () => {
-    setIsDrawing(false);
-    const canvas = canvasRef.current;
-    if (canvas) {
-      onSave(canvas.toDataURL());
-    }
-  };
 
   const clear = () => {
     const canvas = canvasRef.current;
     if (canvas) {
       const ctx = canvas.getContext('2d');
-      ctx?.clearRect(0, 0, canvas.width, canvas.height);
-      onSave('');
-      if (onClear) onClear();
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        onSave('');
+        if (onClear) onClear();
+      }
     }
   };
 
   return (
     <div className="space-y-4">
-      <div className="relative glass border border-white/10 rounded-2xl overflow-hidden bg-black/20">
+      <div className="relative glass border border-white/10 rounded-2xl overflow-hidden bg-black/40">
         <canvas
           ref={canvasRef}
-          width={400}
-          height={150}
-          className="w-full h-[150px] cursor-crosshair touch-none"
+          width={600}
+          height={200}
+          className="w-full h-[180px] cursor-crosshair touch-none"
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={stopDrawing}
@@ -90,12 +131,12 @@ const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSave, onClear }) =>
         <button 
           type="button"
           onClick={clear}
-          className="absolute top-2 right-2 text-[8px] uppercase tracking-widest text-stone-500 hover:text-white px-3 py-1 bg-white/5 rounded-full"
+          className="absolute top-3 right-3 text-[9px] uppercase tracking-widest text-[#BF953F] hover:text-white px-4 py-2 bg-black/60 rounded-full border border-[#BF953F]/20 transition-all active:scale-95"
         >
-          Limpar
+          Limpar Assinatura
         </button>
       </div>
-      <p className="text-[8px] text-center uppercase tracking-[0.3em] text-stone-600">Assinatura da Cliente</p>
+      <p className="text-[9px] text-center uppercase tracking-[0.4em] text-stone-500 font-bold">Assinatura Digital da Cliente</p>
     </div>
   );
 };

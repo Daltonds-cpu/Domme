@@ -472,45 +472,45 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
                   <Toggle 
                     label="Possui Alergias? (Látex, Cola, etc)" 
                     value={newEntry.analysis?.hasAllergies || false} 
-                    onChange={(val) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, hasAllergies: val}})} 
+                    onChange={(val) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, hasAllergies: val}}))} 
                   />
                   {newEntry.analysis?.hasAllergies && (
                     <input 
                       placeholder="Especifique as alergias..." 
                       value={newEntry.analysis?.allergyDetails} 
-                      onChange={e => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, allergyDetails: e.target.value}})}
+                      onChange={e => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, allergyDetails: e.target.value}}))}
                       className="w-full bg-white/5 border border-[#BF953F]/30 rounded-2xl px-5 py-3 text-white text-xs outline-none"
                     />
                   )}
                   <Toggle 
                     label="Procedimentos Recentes (3 meses)" 
                     value={newEntry.analysis?.recentProcedures || false} 
-                    onChange={(val) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, recentProcedures: val}})} 
+                    onChange={(val) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, recentProcedures: val}}))} 
                   />
                   <Toggle 
                     label="Gestante ou Amamentando?" 
                     value={newEntry.analysis?.isPregnant || false} 
-                    onChange={(val) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, isPregnant: val}})} 
+                    onChange={(val) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, isPregnant: val}}))} 
                   />
                   <Toggle 
                     label="Glaucoma, Catarata ou Blefarite?" 
                     value={newEntry.analysis?.hasEyeConditions || false} 
-                    onChange={(val) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, hasEyeConditions: val}})} 
+                    onChange={(val) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, hasEyeConditions: val}}))} 
                   />
                   <Toggle 
                     label="Usa Lentes de Contato?" 
                     value={newEntry.analysis?.usesContactLenses || false} 
-                    onChange={(val) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, usesContactLenses: val}})} 
+                    onChange={(val) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, usesContactLenses: val}}))} 
                   />
                   <Toggle 
                     label="Tratamento Oncológico?" 
                     value={newEntry.analysis?.oncologicalTreatment || false} 
-                    onChange={(val) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, oncologicalTreatment: val}})} 
+                    onChange={(val) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, oncologicalTreatment: val}}))} 
                   />
                   <Toggle 
                     label="Usa Remédio p/ Crescimento Cílios?" 
                     value={newEntry.analysis?.usesGrowthMeds || false} 
-                    onChange={(val) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, usesGrowthMeds: val}})} 
+                    onChange={(val) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, usesGrowthMeds: val}}))} 
                   />
                 </div>
               </div>
@@ -522,17 +522,17 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
                   <Toggle 
                     label="Pratica Natação, Sauna ou Exercícios Intensos?" 
                     value={newEntry.analysis?.intenseLifestyle || false} 
-                    onChange={(val) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, intenseLifestyle: val}})} 
+                    onChange={(val) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, intenseLifestyle: val}}))} 
                   />
                   <Toggle 
                     label="Usa Rímel à Prova d'Água / Óleo?" 
                     value={newEntry.analysis?.makeupHabits || false} 
-                    onChange={(val) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, makeupHabits: val}})} 
+                    onChange={(val) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, makeupHabits: val}}))} 
                   />
                   <Toggle 
                     label="Hábito de Coçar ou Puxar Cílios?" 
                     value={newEntry.analysis?.lashTics || false} 
-                    onChange={(val) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, lashTics: val}})} 
+                    onChange={(val) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, lashTics: val}}))} 
                   />
                   <div className="space-y-3">
                     <p className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Posição Favorita p/ Dormir</p>
@@ -540,7 +540,8 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
                       {['Costas', 'Lado Esquerdo', 'Lado Direito', 'Bruços'].map(pos => (
                         <button
                           key={pos}
-                          onClick={() => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, sleepingPosition: pos}})}
+                          type="button"
+                          onClick={() => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, sleepingPosition: pos}}))}
                           className={`px-4 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest border transition-all ${newEntry.analysis?.sleepingPosition === pos ? 'gold-bg text-black border-transparent' : 'bg-white/5 border-white/10 text-stone-500 hover:border-[#BF953F]/30'}`}
                         >
                           {pos}
@@ -558,13 +559,13 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
                   <Toggle 
                     label="Já fez extensão antes?" 
                     value={newEntry.analysis?.previousExperience || false} 
-                    onChange={(val) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, previousExperience: val}})} 
+                    onChange={(val) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, previousExperience: val}}))} 
                   />
                   {newEntry.analysis?.previousExperience && (
                     <input 
                       placeholder="Teve alguma reação negativa? Especifique..." 
                       value={newEntry.analysis?.negativeReaction} 
-                      onChange={e => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, negativeReaction: e.target.value}})}
+                      onChange={e => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, negativeReaction: e.target.value}}))}
                       className="w-full bg-white/5 border border-[#BF953F]/30 rounded-2xl px-5 py-3 text-white text-xs outline-none"
                     />
                   )}
@@ -574,7 +575,8 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
                       {['Natural', 'Volumoso'].map(vol => (
                         <button
                           key={vol}
-                          onClick={() => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, desiredVolume: vol}})}
+                          type="button"
+                          onClick={() => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, desiredVolume: vol}}))}
                           className={`flex-1 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest border transition-all ${newEntry.analysis?.desiredVolume === vol ? 'gold-bg text-black border-transparent' : 'bg-white/5 border-white/10 text-stone-500'}`}
                         >
                           {vol}
@@ -588,7 +590,8 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
                       {['Gatinho', 'Boneca'].map(style => (
                         <button
                           key={style}
-                          onClick={() => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, desiredStyle: style}})}
+                          type="button"
+                          onClick={() => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, desiredStyle: style}}))}
                           className={`flex-1 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest border transition-all ${newEntry.analysis?.desiredStyle === style ? 'gold-bg text-black border-transparent' : 'bg-white/5 border-white/10 text-stone-500'}`}
                         >
                           {style}
@@ -648,10 +651,10 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
 
                 <div className="space-y-1">
                   <label className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Observações Adicionais</label>
-                  <textarea rows={3} value={newEntry.analysis?.additionalNotes} onChange={e => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, additionalNotes: e.target.value}})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-xs outline-none focus:border-[#BF953F] resize-y min-h-[80px]" placeholder="Intercorrências ou preferências da cliente..."></textarea>
+                  <textarea rows={3} value={newEntry.analysis?.additionalNotes} onChange={e => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, additionalNotes: e.target.value}}))} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-xs outline-none focus:border-[#BF953F] resize-y min-h-[80px]" placeholder="Intercorrências ou preferências da cliente..."></textarea>
                 </div>
                 
-                <SignatureCanvas onSave={(sig) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, signature: sig}})} />
+                <SignatureCanvas onSave={(sig) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, signature: sig}}))} />
               </div>
 
               <button 
