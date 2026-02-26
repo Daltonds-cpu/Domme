@@ -7,6 +7,7 @@ export interface AnalysisData {
   thyroidGlaucomaIssues: boolean;
   oncologicalTreatment: boolean;
   recentProcedures: boolean;
+  sleepsOnSide: boolean;
   
   // Ficha Técnica
   technique: string; // Fio a Fio, Volume Russo, etc.

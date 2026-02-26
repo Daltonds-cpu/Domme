@@ -21,6 +21,7 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
   const [isSaving, setIsSaving] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedServiceFile, setSelectedServiceFile] = useState<File | null>(null);
+  const [selectedEntryForAuth, setSelectedEntryForAuth] = useState<DossieEntry | null>(null);
   
   // Estados para o Formulário de Novo Atendimento
   const [newEntry, setNewEntry] = useState<Partial<DossieEntry>>({
@@ -34,6 +35,7 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
       thyroidGlaucomaIssues: false,
       oncologicalTreatment: false,
       recentProcedures: false,
+      sleepsOnSide: false,
       technique: '',
       mapping: '',
       style: '',
@@ -315,14 +317,22 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
                         <p className="text-[10px] font-bold text-[#BF953F] uppercase tracking-[0.3em]">{entry.date} às {entry.time}</p>
                         <h4 className="text-xl font-serif text-white italic mt-1">{entry.procedure}</h4>
                       </div>
-                      <div className="flex items-center space-x-8">
-                        <div className="text-right">
-                          <p className="text-[9px] uppercase text-stone-500 tracking-widest">Investimento</p>
-                          <p className="text-lg font-num text-white">R$ {entry.value.toFixed(2)}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[9px] uppercase text-stone-500 tracking-widest">Método</p>
-                          <p className="text-xs uppercase tracking-widest text-[#BF953F]">{entry.paymentMethod}</p>
+                      <div className="flex items-center space-x-6">
+                        <button 
+                          onClick={() => setSelectedEntryForAuth(entry)}
+                          className="px-4 py-2 rounded-full border border-[#BF953F]/30 text-[8px] font-bold uppercase tracking-widest text-[#BF953F] hover:bg-[#BF953F] hover:text-black transition-all"
+                        >
+                          Ver Ficha de Autorização
+                        </button>
+                        <div className="flex items-center space-x-8">
+                          <div className="text-right">
+                            <p className="text-[9px] uppercase text-stone-500 tracking-widest">Investimento</p>
+                            <p className="text-lg font-num text-white">R$ {entry.value.toFixed(2)}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[9px] uppercase text-stone-500 tracking-widest">Método</p>
+                            <p className="text-xs uppercase tracking-widest text-[#BF953F]">{entry.paymentMethod}</p>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -416,6 +426,7 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
                     { label: 'Tireoide/Glaucoma', key: 'thyroidGlaucomaIssues' },
                     { label: 'Trat. Oncológico', key: 'oncologicalTreatment' },
                     { label: 'Proced. Recentes', key: 'recentProcedures' },
+                    { label: 'Dorme de Lado', key: 'sleepsOnSide' },
                   ].map((item) => (
                     <label key={item.key} className="flex items-center space-x-3 cursor-pointer group">
                       <div 
@@ -495,6 +506,70 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
               >
                 {isSaving ? 'Processando Ficha...' : 'Efetivar Atendimento Elite'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: FICHA DE AUTORIZAÇÃO / ANAMNESE (VISUALIZAÇÃO) */}
+      {selectedEntryForAuth && (
+        <div className="fixed inset-0 z-[6000] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/98 backdrop-blur-xl" onClick={() => setSelectedEntryForAuth(null)}></div>
+          <div className="relative w-full max-w-2xl glass p-8 md:p-12 rounded-[3rem] border-[#BF953F]/40 animate-in zoom-in-95 duration-500 max-h-[85vh] overflow-y-auto no-scrollbar">
+            <header className="mb-10 text-center">
+              <p className="text-[10px] uppercase tracking-[0.5em] text-[#BF953F] font-bold">Documento Elite</p>
+              <h3 className="text-2xl font-serif text-white italic mt-2">Ficha de Autorização & Anamnese</h3>
+              <p className="text-[9px] uppercase tracking-widest text-stone-500 mt-2">{selectedEntryForAuth.date} • {selectedEntryForAuth.procedure}</p>
+            </header>
+
+            <div className="space-y-10">
+              <div className="space-y-4">
+                <h4 className="text-[10px] uppercase tracking-widest text-stone-500 border-b border-white/10 pb-2">Checklist de Saúde</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  {[
+                    { label: 'Grávida/Lactante', val: selectedEntryForAuth.analysis.isPregnant },
+                    { label: 'Alergias', val: selectedEntryForAuth.analysis.hasAllergies },
+                    { label: 'Proced. Recentes', val: selectedEntryForAuth.analysis.recentProcedures },
+                    { label: 'Trat. Oncológico', val: selectedEntryForAuth.analysis.oncologicalTreatment },
+                    { label: 'Dorme de Lado', val: selectedEntryForAuth.analysis.sleepsOnSide },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center space-x-3">
+                      <div className={`w-3 h-3 rounded-full ${item.val ? 'gold-bg' : 'bg-white/10'}`}></div>
+                      <span className="text-[10px] uppercase tracking-widest text-stone-400">{item.label}: <span className={item.val ? 'text-white' : 'text-stone-600'}>{item.val ? 'Sim' : 'Não'}</span></span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-[10px] uppercase tracking-widest text-stone-500 border-b border-white/10 pb-2">Termo de Autorização</h4>
+                <div className="bg-white/[0.02] p-6 rounded-2xl border border-white/5">
+                  <p className="text-[11px] text-stone-400 leading-relaxed italic">
+                    "Autorizo a realização do procedimento de extensão de cílios e o registro fotográfico (antes e depois) para fins de acompanhamento técnico e divulgação em portfólio profissional. Declaro que as informações de saúde prestadas são verdadeiras."
+                  </p>
+                </div>
+              </div>
+
+              {selectedEntryForAuth.analysis.additionalNotes && (
+                <div className="space-y-4">
+                  <h4 className="text-[10px] uppercase tracking-widest text-stone-500 border-b border-white/10 pb-2">Observações do Profissional</h4>
+                  <p className="text-[11px] text-white bg-white/5 p-4 rounded-xl">{selectedEntryForAuth.analysis.additionalNotes}</p>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <h4 className="text-[10px] uppercase tracking-widest text-stone-500 border-b border-white/10 pb-2">Assinatura Digital</h4>
+                <div className="flex flex-col items-center justify-center p-8 bg-white/5 rounded-3xl border border-white/10">
+                  {selectedEntryForAuth.analysis.signature ? (
+                    <img src={selectedEntryForAuth.analysis.signature} className="max-h-24 grayscale invert" alt="Assinatura" />
+                  ) : (
+                    <p className="text-[10px] text-stone-600 uppercase tracking-widest">Sem assinatura registrada</p>
+                  )}
+                  <p className="text-[8px] uppercase tracking-widest text-stone-500 mt-6 pt-4 border-t border-white/10 w-full text-center">Validado Eletronicamente</p>
+                </div>
+              </div>
+
+              <button onClick={() => setSelectedEntryForAuth(null)} className="w-full gold-bg text-black py-5 rounded-2xl font-bold uppercase tracking-widest text-[9px] shadow-xl hover:scale-[1.02] transition-all">Fechar Documento</button>
             </div>
           </div>
         </div>

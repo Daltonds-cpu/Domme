@@ -103,6 +103,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
           thyroidGlaucomaIssues: false,
           oncologicalTreatment: false,
           recentProcedures: false,
+          sleepsOnSide: false,
           technique: procedure || 'Atendimento Personalizado',
           mapping: '-',
           style: '-',
