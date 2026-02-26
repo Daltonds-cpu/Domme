@@ -166,18 +166,7 @@ const MoreTab: React.FC<MoreTabProps> = ({ userProfile, onUpdateProfile, deferre
               <h3 className="text-2xl font-serif text-white italic mt-2">Sobre o Sistema</h3>
             </header>
             <div className="space-y-6 text-stone-400 text-xs leading-relaxed">
-              <p>O <span className="text-white font-bold">Domme Lash Elite</span> é uma plataforma de gestão de alta performance, desenhada para profissionais que buscam o domínio absoluto sobre seu portfólio e finanças.</p>
-              <div className="grid grid-cols-2 gap-4 pt-4">
-                <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-                  <p className="text-[#BF953F] font-bold text-[10px] uppercase tracking-widest">Versão</p>
-                  <p className="text-white mt-1">2.5.0 Gold</p>
-                </div>
-                <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-                  <p className="text-[#BF953F] font-bold text-[10px] uppercase tracking-widest">Status</p>
-                  <p className="text-white mt-1">Sincronizado</p>
-                </div>
-              </div>
-              <p className="pt-4 border-t border-white/5">Desenvolvido com foco em exclusividade, segurança de dados e experiência do usuário de luxo.</p>
+              <p>Este sistema foi desenvolvido exclusivamente para <span className="text-white font-bold">Domme Lash</span> por <span className="text-[#BF953F]">Dalton D. & Daniele M.</span></p>
             </div>
             <button onClick={() => setActiveModal('none')} className="w-full gold-bg text-black py-4 rounded-2xl font-bold uppercase tracking-widest text-[9px]">Fechar Panorama</button>
           </div>

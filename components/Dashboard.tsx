@@ -235,20 +235,20 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToRegistration, onNavig
             {birthdays.length > 0 ? birthdays.map(c => (
               <div key={c.id} className="flex items-center justify-between p-5 rounded-2xl bg-[#BF953F]/5 border border-[#BF953F]/20 animate-in zoom-in-95 duration-500">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full border border-[#BF953F]/30 overflow-hidden flex items-center justify-center bg-white/5">
-                    {c.photoUrl || c.gallery?.[0] ? (
-                      <img src={c.photoUrl || c.gallery?.[0]} className="w-full h-full object-cover" alt="" />
-                    ) : (
-                      <ICONS.Eye className="w-5 h-5 text-[#BF953F]/40" />
-                    )}
-                  </div>
+                  <span className="text-xl">🎈</span>
                   <div>
                     <p className="text-[11px] font-bold text-white uppercase tracking-widest">{c.name}</p>
                     <p className="text-[9px] text-[#BF953F] uppercase">Aniversariante do Dia</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <a href={`https://wa.me/${c.phone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-full glass border-[#BF953F]/40 flex items-center justify-center text-[#BF953F] hover:bg-[#BF953F] hover:text-black transition-all" title="WhatsApp">
+                  <a 
+                    href={`https://wa.me/${c.phone.replace(/\D/g,'')}?text=${encodeURIComponent(`Parabéns, ${c.name}! ✨ Hoje o dia é todo seu, mas o brilho no olhar é o que você espalha o ano inteiro. Que seu novo ciclo seja tão impecável e marcante quanto suas extensões. Feliz aniversário! 🎂💖`)}`} 
+                    target="_blank" 
+                    rel="noreferrer" 
+                    className="w-8 h-8 rounded-full glass border-[#BF953F]/40 flex items-center justify-center text-[#BF953F] hover:bg-[#BF953F] hover:text-black transition-all" 
+                    title="WhatsApp"
+                  >
                     <ICONS.WhatsApp className="w-3 h-3" />
                   </a>
                   <button onClick={() => onNavigateToClient?.(c.id)} className="w-8 h-8 rounded-full glass border-[#BF953F]/40 flex items-center justify-center text-[#BF953F] hover:bg-[#BF953F] hover:text-black transition-all" title="Dossiê">
