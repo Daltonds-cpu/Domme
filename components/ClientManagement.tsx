@@ -14,19 +14,19 @@ interface ClientManagementProps {
 
 const Toggle = ({ label, value, onChange }: { label: string, value: boolean, onChange: (val: boolean) => void }) => (
   <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10 group hover:border-[#BF953F]/30 transition-all">
-    <span className="text-[10px] uppercase tracking-widest text-stone-400 group-hover:text-white transition-colors">{label}</span>
-    <div className="flex bg-black/40 p-1 rounded-full border border-white/5">
+    <span className="text-[10px] uppercase tracking-widest text-stone-400 group-hover:text-white transition-colors pr-4">{label}</span>
+    <div className="flex bg-black/40 p-1 rounded-full border border-white/5 shrink-0">
       <button 
         type="button"
         onClick={() => onChange(true)}
-        className={`px-4 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all ${value ? 'gold-bg text-black' : 'text-stone-600 hover:text-stone-400'}`}
+        className={`px-5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all ${value ? 'gold-bg text-black shadow-lg' : 'text-stone-600 hover:text-stone-400'}`}
       >
         Sim
       </button>
       <button 
         type="button"
         onClick={() => onChange(false)}
-        className={`px-4 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all ${!value ? 'gold-bg text-black' : 'text-stone-600 hover:text-stone-400'}`}
+        className={`px-5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all ${!value ? 'gold-bg text-black shadow-lg' : 'text-stone-600 hover:text-stone-400'}`}
       >
         Não
       </button>
@@ -46,6 +46,42 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
   const [selectedServiceFile, setSelectedServiceFile] = useState<File | null>(null);
   const [selectedEntryForAuth, setSelectedEntryForAuth] = useState<DossieEntry | null>(null);
   
+  const handleOpenNewAtendimento = () => {
+    setNewEntry({
+      procedure: '',
+      value: 0,
+      paymentMethod: 'PIX',
+      analysis: {
+        hasAllergies: false,
+        allergyDetails: '',
+        recentProcedures: false,
+        isPregnant: false,
+        hasEyeConditions: false,
+        usesContactLenses: false,
+        oncologicalTreatment: false,
+        usesGrowthMeds: false,
+        intenseLifestyle: false,
+        sleepingPosition: 'Costas',
+        makeupHabits: false,
+        lashTics: false,
+        previousExperience: false,
+        negativeReaction: '',
+        desiredVolume: 'Natural',
+        desiredStyle: 'Gatinho',
+        technique: '',
+        mapping: '',
+        style: '',
+        curvature: '',
+        thickness: '',
+        adhesiveUsed: '',
+        additionalNotes: '',
+        signature: ''
+      }
+    });
+    setSelectedServiceFile(null);
+    setIsNewAtendimentoOpen(true);
+  };
+
   // Estados para o Formulário de Novo Atendimento
   const [newEntry, setNewEntry] = useState<Partial<DossieEntry>>({
     procedure: '',
@@ -332,7 +368,7 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
                 </div>
               </div>
               <div className="flex items-center space-x-4">
-                <button onClick={() => setIsNewAtendimentoOpen(true)} className="gold-bg text-black px-8 py-3 rounded-full text-[9px] font-bold uppercase tracking-widest shadow-xl hover:scale-105 transition-all">Novo Atendimento</button>
+                <button onClick={handleOpenNewAtendimento} className="gold-bg text-black px-8 py-3 rounded-full text-[9px] font-bold uppercase tracking-widest shadow-xl hover:scale-105 transition-all">Novo Atendimento</button>
                 <button onClick={() => setSelectedClientForDossie(null)} className="w-12 h-12 rounded-full glass flex items-center justify-center text-stone-500 hover:text-white"><ICONS.Plus className="w-5 h-5 rotate-45" /></button>
               </div>
             </header>
@@ -448,15 +484,15 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="space-y-1">
                     <label className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Procedimento</label>
-                    <input value={newEntry.procedure} onChange={e => setNewEntry({...newEntry, procedure: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-sm outline-none focus:border-[#BF953F]" placeholder="Ex: Volume Russo" />
+                    <input value={newEntry.procedure} onChange={e => setNewEntry(prev => ({...prev, procedure: e.target.value}))} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-sm outline-none focus:border-[#BF953F]" placeholder="Ex: Volume Russo" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Investimento (R$)</label>
-                    <input type="number" value={newEntry.value} onChange={e => setNewEntry({...newEntry, value: parseFloat(e.target.value)})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-sm outline-none focus:border-[#BF953F]" />
+                    <input type="number" value={newEntry.value} onChange={e => setNewEntry(prev => ({...prev, value: parseFloat(e.target.value)}))} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-sm outline-none focus:border-[#BF953F]" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Pagamento</label>
-                    <select value={newEntry.paymentMethod} onChange={e => setNewEntry({...newEntry, paymentMethod: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-sm outline-none focus:border-[#BF953F] appearance-none">
+                    <select value={newEntry.paymentMethod} onChange={e => setNewEntry(prev => ({...prev, paymentMethod: e.target.value}))} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-sm outline-none focus:border-[#BF953F] appearance-none">
                       <option value="PIX">PIX</option>
                       <option value="CARTÃO">CARTÃO</option>
                       <option value="DINHEIRO">DINHEIRO</option>
@@ -608,23 +644,23 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                   <div className="space-y-1">
                     <label className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Mapping</label>
-                    <input placeholder="Ex: Esquilo" value={newEntry.analysis?.mapping} onChange={e => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, mapping: e.target.value}})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-xs outline-none focus:border-[#BF953F]" />
+                    <input placeholder="Ex: Esquilo" value={newEntry.analysis?.mapping} onChange={e => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, mapping: e.target.value}}))} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-xs outline-none focus:border-[#BF953F]" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Curvatura</label>
-                    <input placeholder="Ex: C+ / D" value={newEntry.analysis?.curvature} onChange={e => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, curvature: e.target.value}})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-xs outline-none focus:border-[#BF953F]" />
+                    <input placeholder="Ex: C+ / D" value={newEntry.analysis?.curvature} onChange={e => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, curvature: e.target.value}}))} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-xs outline-none focus:border-[#BF953F]" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Espessura</label>
-                    <input placeholder="Ex: 0.07" value={newEntry.analysis?.thickness} onChange={e => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, thickness: e.target.value}})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-xs outline-none focus:border-[#BF953F]" />
+                    <input placeholder="Ex: 0.07" value={newEntry.analysis?.thickness} onChange={e => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, thickness: e.target.value}}))} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-xs outline-none focus:border-[#BF953F]" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Estilo/Efeito</label>
-                    <input placeholder="Ex: Kim K" value={newEntry.analysis?.style} onChange={e => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, style: e.target.value}})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-xs outline-none focus:border-[#BF953F]" />
+                    <input placeholder="Ex: Kim K" value={newEntry.analysis?.style} onChange={e => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, style: e.target.value}}))} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-xs outline-none focus:border-[#BF953F]" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Adesivo</label>
-                    <input placeholder="Ex: Sky Gold" value={newEntry.analysis?.adhesiveUsed} onChange={e => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, adhesiveUsed: e.target.value}})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-xs outline-none focus:border-[#BF953F]" />
+                    <input placeholder="Ex: Sky Gold" value={newEntry.analysis?.adhesiveUsed} onChange={e => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, adhesiveUsed: e.target.value}}))} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-xs outline-none focus:border-[#BF953F]" />
                   </div>
                 </div>
               </div>

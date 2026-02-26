@@ -25,10 +25,11 @@ const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSave, onClear }) =>
       clientY = (e as MouseEvent).clientY;
     }
 
-    return {
-      x: clientX - rect.left,
-      y: clientY - rect.top
-    };
+    // Scale coordinates to match canvas internal resolution
+    const x = (clientX - rect.left) * (canvas.width / rect.width);
+    const y = (clientY - rect.top) * (canvas.height / rect.height);
+
+    return { x, y };
   }, []);
 
   const startDrawing = useCallback((e: React.MouseEvent | React.TouchEvent) => {
