@@ -28,6 +28,7 @@ export interface DossieEntry {
   procedure: string;
   value: number;
   paymentMethod: string;
+  photoUrl?: string;
   analysis: AnalysisData;
 }
 

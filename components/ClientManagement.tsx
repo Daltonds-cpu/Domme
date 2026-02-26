@@ -20,6 +20,7 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedServiceFile, setSelectedServiceFile] = useState<File | null>(null);
   
   // Estados para o Formulário de Novo Atendimento
   const [newEntry, setNewEntry] = useState<Partial<DossieEntry>>({
@@ -150,22 +151,30 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
 
     setIsSaving(true);
     try {
+      let photoUrl = '';
+      if (selectedServiceFile) {
+        photoUrl = await dataService.uploadImage(selectedServiceFile, selectedClientForDossie.id);
+      }
+
       const entry: DossieEntry = {
         ...newEntry as DossieEntry,
         id: Math.random().toString(36).substr(2, 9),
         date: new Date().toLocaleDateString('pt-BR'),
-        time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        photoUrl
       };
 
       const updatedClient = {
         ...selectedClientForDossie,
         dossie: [entry, ...(selectedClientForDossie.dossie || [])],
+        gallery: photoUrl ? [photoUrl, ...(selectedClientForDossie.gallery || [])] : selectedClientForDossie.gallery,
         lastVisit: 'Hoje'
       };
 
       await dataService.saveItem('clients', updatedClient);
       setSelectedClientForDossie(updatedClient);
       setIsNewAtendimentoOpen(false);
+      setSelectedServiceFile(null);
       loadClients();
     } catch (error) {
       console.error("Erro ao salvar atendimento:", error);
@@ -295,6 +304,12 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
               {selectedClientForDossie.dossie?.length > 0 ? (
                 selectedClientForDossie.dossie.map((entry, idx) => (
                   <div key={idx} className="glass p-8 rounded-[2rem] border-white/5 space-y-8 hover:border-[#BF953F]/20 transition-all group animate-in fade-in slide-in-from-left-4" style={{animationDelay: `${idx * 100}ms`}}>
+                    {entry.photoUrl && (
+                      <div className="w-full aspect-video rounded-2xl overflow-hidden border border-white/10 mb-6">
+                        <img src={entry.photoUrl} className="w-full h-full object-cover" alt="Resultado do Atendimento" />
+                      </div>
+                    )}
+
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
                       <div>
                         <p className="text-[10px] font-bold text-[#BF953F] uppercase tracking-[0.3em]">{entry.date} às {entry.time}</p>
@@ -447,6 +462,24 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
 
               <div className="space-y-4">
                 <h4 className="text-[10px] uppercase tracking-widest text-stone-500 border-b border-white/10 pb-2">Consentimento & Assinatura</h4>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h4 className="text-[10px] uppercase tracking-widest text-stone-500">Foto do Procedimento</h4>
+                    <label className="cursor-pointer gold-bg text-black px-4 py-2 rounded-full text-[8px] font-bold uppercase tracking-widest hover:scale-105 transition-all">
+                      {selectedServiceFile ? 'Foto Selecionada' : 'Anexar Foto'}
+                      <input type="file" className="hidden" accept="image/*" onChange={(e) => setSelectedServiceFile(e.target.files?.[0] || null)} disabled={isSaving} />
+                    </label>
+                  </div>
+                  {selectedServiceFile && (
+                    <div className="w-full aspect-video rounded-2xl overflow-hidden border border-[#BF953F]/40 relative group animate-pulse">
+                      <img src={URL.createObjectURL(selectedServiceFile)} className="w-full h-full object-cover opacity-50" alt="Preview" />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <p className="text-[8px] uppercase tracking-widest text-white font-bold">Aguardando Processamento</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div className="space-y-1">
                   <label className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Observações Adicionais</label>
                   <textarea rows={2} value={newEntry.analysis?.additionalNotes} onChange={e => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, additionalNotes: e.target.value}})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-xs outline-none focus:border-[#BF953F] resize-none" placeholder="Intercorrências ou preferências da cliente..."></textarea>
