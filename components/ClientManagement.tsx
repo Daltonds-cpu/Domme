@@ -2,7 +2,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ICONS } from '../constants';
 import { Client, EyeShape, DossieEntry, AnalysisData } from '../types';
-import { auth, dataService } from '../services/firebase';
+import { auth, dataService, storage } from '../services/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import SignatureCanvas from './SignatureCanvas';
 
 interface ClientManagementProps {
@@ -10,6 +11,28 @@ interface ClientManagementProps {
   initialClientId?: string;
   onClearPrefill?: () => void;
 }
+
+const Toggle = ({ label, value, onChange }: { label: string, value: boolean, onChange: (val: boolean) => void }) => (
+  <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10 group hover:border-[#BF953F]/30 transition-all">
+    <span className="text-[10px] uppercase tracking-widest text-stone-400 group-hover:text-white transition-colors">{label}</span>
+    <div className="flex bg-black/40 p-1 rounded-full border border-white/5">
+      <button 
+        type="button"
+        onClick={() => onChange(true)}
+        className={`px-4 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all ${value ? 'gold-bg text-black' : 'text-stone-600 hover:text-stone-400'}`}
+      >
+        Sim
+      </button>
+      <button 
+        type="button"
+        onClick={() => onChange(false)}
+        className={`px-4 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all ${!value ? 'gold-bg text-black' : 'text-stone-600 hover:text-stone-400'}`}
+      >
+        Não
+      </button>
+    </div>
+  </div>
+);
 
 const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, initialClientId, onClearPrefill }) => {
   const [clients, setClients] = useState<Client[]>([]);
@@ -29,13 +52,22 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
     value: 0,
     paymentMethod: 'PIX',
     analysis: {
-      isWearingMascara: false,
-      isPregnant: false,
       hasAllergies: false,
-      thyroidGlaucomaIssues: false,
-      oncologicalTreatment: false,
+      allergyDetails: '',
       recentProcedures: false,
-      sleepsOnSide: false,
+      isPregnant: false,
+      hasEyeConditions: false,
+      usesContactLenses: false,
+      oncologicalTreatment: false,
+      usesGrowthMeds: false,
+      intenseLifestyle: false,
+      sleepingPosition: 'Costas',
+      makeupHabits: false,
+      lashTics: false,
+      previousExperience: false,
+      negativeReaction: '',
+      desiredVolume: 'Natural',
+      desiredStyle: 'Gatinho',
       technique: '',
       mapping: '',
       style: '',
@@ -158,12 +190,30 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
         photoUrl = await dataService.uploadImage(selectedServiceFile, selectedClientForDossie.id);
       }
 
+      let signatureUrl = '';
+      if (newEntry.analysis?.signature && newEntry.analysis.signature.startsWith('data:image')) {
+        // Converter base64 para blob e fazer upload
+        const response = await fetch(newEntry.analysis.signature);
+        const blob = await response.blob();
+        const fileName = `${Date.now()}_signature.png`;
+        const user = auth.currentUser;
+        if (user) {
+          const storageRef = ref(storage, `uploads/${user.uid}/${selectedClientForDossie.id}/${fileName}`);
+          await uploadBytes(storageRef, blob);
+          signatureUrl = await getDownloadURL(storageRef);
+        }
+      }
+
       const entry: DossieEntry = {
         ...newEntry as DossieEntry,
         id: Math.random().toString(36).substr(2, 9),
         date: new Date().toLocaleDateString('pt-BR'),
         time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        photoUrl
+        photoUrl,
+        analysis: {
+          ...newEntry.analysis!,
+          signature: signatureUrl || newEntry.analysis?.signature
+        }
       };
 
       const updatedClient = {
@@ -416,31 +466,136 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
               </div>
 
               {/* Seção Saúde Ocular */}
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <h4 className="text-[10px] uppercase tracking-widest text-stone-500 border-b border-white/10 pb-2">Avaliação de Saúde (Anamnese)</h4>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {[
-                    { label: 'Uso de Rímel', key: 'isWearingMascara' },
-                    { label: 'Gestante/Lactante', key: 'isPregnant' },
-                    { label: 'Histórico Alérgico', key: 'hasAllergies' },
-                    { label: 'Tireoide/Glaucoma', key: 'thyroidGlaucomaIssues' },
-                    { label: 'Trat. Oncológico', key: 'oncologicalTreatment' },
-                    { label: 'Proced. Recentes', key: 'recentProcedures' },
-                    { label: 'Dorme de Lado', key: 'sleepsOnSide' },
-                  ].map((item) => (
-                    <label key={item.key} className="flex items-center space-x-3 cursor-pointer group">
-                      <div 
-                        onClick={() => setNewEntry({
-                          ...newEntry, 
-                          analysis: { ...newEntry.analysis!, [item.key]: !newEntry.analysis![item.key as keyof AnalysisData] }
-                        })}
-                        className={`w-4 h-4 rounded border ${newEntry.analysis?.[item.key as keyof AnalysisData] ? 'gold-bg border-transparent' : 'border-white/20'} transition-all flex items-center justify-center`}
-                      >
-                        {newEntry.analysis?.[item.key as keyof AnalysisData] && <svg className="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeWidth="3" /></svg>}
-                      </div>
-                      <span className="text-[10px] uppercase tracking-widest text-stone-400 group-hover:text-white transition-colors">{item.label}</span>
-                    </label>
-                  ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Toggle 
+                    label="Possui Alergias? (Látex, Cola, etc)" 
+                    value={newEntry.analysis?.hasAllergies || false} 
+                    onChange={(val) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, hasAllergies: val}})} 
+                  />
+                  {newEntry.analysis?.hasAllergies && (
+                    <input 
+                      placeholder="Especifique as alergias..." 
+                      value={newEntry.analysis?.allergyDetails} 
+                      onChange={e => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, allergyDetails: e.target.value}})}
+                      className="w-full bg-white/5 border border-[#BF953F]/30 rounded-2xl px-5 py-3 text-white text-xs outline-none"
+                    />
+                  )}
+                  <Toggle 
+                    label="Procedimentos Recentes (3 meses)" 
+                    value={newEntry.analysis?.recentProcedures || false} 
+                    onChange={(val) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, recentProcedures: val}})} 
+                  />
+                  <Toggle 
+                    label="Gestante ou Amamentando?" 
+                    value={newEntry.analysis?.isPregnant || false} 
+                    onChange={(val) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, isPregnant: val}})} 
+                  />
+                  <Toggle 
+                    label="Glaucoma, Catarata ou Blefarite?" 
+                    value={newEntry.analysis?.hasEyeConditions || false} 
+                    onChange={(val) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, hasEyeConditions: val}})} 
+                  />
+                  <Toggle 
+                    label="Usa Lentes de Contato?" 
+                    value={newEntry.analysis?.usesContactLenses || false} 
+                    onChange={(val) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, usesContactLenses: val}})} 
+                  />
+                  <Toggle 
+                    label="Tratamento Oncológico?" 
+                    value={newEntry.analysis?.oncologicalTreatment || false} 
+                    onChange={(val) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, oncologicalTreatment: val}})} 
+                  />
+                  <Toggle 
+                    label="Usa Remédio p/ Crescimento Cílios?" 
+                    value={newEntry.analysis?.usesGrowthMeds || false} 
+                    onChange={(val) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, usesGrowthMeds: val}})} 
+                  />
+                </div>
+              </div>
+
+              {/* Seção Hábitos e Estilo de Vida */}
+              <div className="space-y-6">
+                <h4 className="text-[10px] uppercase tracking-widest text-stone-500 border-b border-white/10 pb-2">Hábitos e Estilo de Vida (Retenção)</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Toggle 
+                    label="Pratica Natação, Sauna ou Exercícios Intensos?" 
+                    value={newEntry.analysis?.intenseLifestyle || false} 
+                    onChange={(val) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, intenseLifestyle: val}})} 
+                  />
+                  <Toggle 
+                    label="Usa Rímel à Prova d'Água / Óleo?" 
+                    value={newEntry.analysis?.makeupHabits || false} 
+                    onChange={(val) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, makeupHabits: val}})} 
+                  />
+                  <Toggle 
+                    label="Hábito de Coçar ou Puxar Cílios?" 
+                    value={newEntry.analysis?.lashTics || false} 
+                    onChange={(val) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, lashTics: val}})} 
+                  />
+                  <div className="space-y-3">
+                    <p className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Posição Favorita p/ Dormir</p>
+                    <div className="flex flex-wrap gap-2">
+                      {['Costas', 'Lado Esquerdo', 'Lado Direito', 'Bruços'].map(pos => (
+                        <button
+                          key={pos}
+                          onClick={() => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, sleepingPosition: pos}})}
+                          className={`px-4 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest border transition-all ${newEntry.analysis?.sleepingPosition === pos ? 'gold-bg text-black border-transparent' : 'bg-white/5 border-white/10 text-stone-500 hover:border-[#BF953F]/30'}`}
+                        >
+                          {pos}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Seção Alinhamento de Expectativas */}
+              <div className="space-y-6">
+                <h4 className="text-[10px] uppercase tracking-widest text-stone-500 border-b border-white/10 pb-2">Alinhamento de Expectativas (Design)</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Toggle 
+                    label="Já fez extensão antes?" 
+                    value={newEntry.analysis?.previousExperience || false} 
+                    onChange={(val) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, previousExperience: val}})} 
+                  />
+                  {newEntry.analysis?.previousExperience && (
+                    <input 
+                      placeholder="Teve alguma reação negativa? Especifique..." 
+                      value={newEntry.analysis?.negativeReaction} 
+                      onChange={e => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, negativeReaction: e.target.value}})}
+                      className="w-full bg-white/5 border border-[#BF953F]/30 rounded-2xl px-5 py-3 text-white text-xs outline-none"
+                    />
+                  )}
+                  <div className="space-y-3">
+                    <p className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Volume Desejado</p>
+                    <div className="flex gap-2">
+                      {['Natural', 'Volumoso'].map(vol => (
+                        <button
+                          key={vol}
+                          onClick={() => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, desiredVolume: vol}})}
+                          className={`flex-1 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest border transition-all ${newEntry.analysis?.desiredVolume === vol ? 'gold-bg text-black border-transparent' : 'bg-white/5 border-white/10 text-stone-500'}`}
+                        >
+                          {vol}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <p className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Mapping Desejado</p>
+                    <div className="flex gap-2">
+                      {['Gatinho', 'Boneca'].map(style => (
+                        <button
+                          key={style}
+                          onClick={() => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, desiredStyle: style}})}
+                          className={`flex-1 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest border transition-all ${newEntry.analysis?.desiredStyle === style ? 'gold-bg text-black border-transparent' : 'bg-white/5 border-white/10 text-stone-500'}`}
+                        >
+                          {style}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -493,7 +648,7 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
 
                 <div className="space-y-1">
                   <label className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Observações Adicionais</label>
-                  <textarea rows={2} value={newEntry.analysis?.additionalNotes} onChange={e => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, additionalNotes: e.target.value}})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-xs outline-none focus:border-[#BF953F] resize-none" placeholder="Intercorrências ou preferências da cliente..."></textarea>
+                  <textarea rows={3} value={newEntry.analysis?.additionalNotes} onChange={e => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, additionalNotes: e.target.value}})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-xs outline-none focus:border-[#BF953F] resize-y min-h-[80px]" placeholder="Intercorrências ou preferências da cliente..."></textarea>
                 </div>
                 
                 <SignatureCanvas onSave={(sig) => setNewEntry({...newEntry, analysis: {...newEntry.analysis!, signature: sig}})} />
@@ -525,19 +680,58 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
             <div className="space-y-10">
               <div className="space-y-4">
                 <h4 className="text-[10px] uppercase tracking-widest text-stone-500 border-b border-white/10 pb-2">Checklist de Saúde</h4>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[
-                    { label: 'Grávida/Lactante', val: selectedEntryForAuth.analysis.isPregnant },
-                    { label: 'Alergias', val: selectedEntryForAuth.analysis.hasAllergies },
+                    { label: 'Alergias', val: selectedEntryForAuth.analysis.hasAllergies, detail: selectedEntryForAuth.analysis.allergyDetails },
                     { label: 'Proced. Recentes', val: selectedEntryForAuth.analysis.recentProcedures },
+                    { label: 'Gestante/Lactante', val: selectedEntryForAuth.analysis.isPregnant },
+                    { label: 'Glaucoma/Catarata', val: selectedEntryForAuth.analysis.hasEyeConditions },
+                    { label: 'Lentes de Contato', val: selectedEntryForAuth.analysis.usesContactLenses },
                     { label: 'Trat. Oncológico', val: selectedEntryForAuth.analysis.oncologicalTreatment },
-                    { label: 'Dorme de Lado', val: selectedEntryForAuth.analysis.sleepsOnSide },
+                    { label: 'Remédio Crescimento', val: selectedEntryForAuth.analysis.usesGrowthMeds },
                   ].map((item, i) => (
-                    <div key={i} className="flex items-center space-x-3">
-                      <div className={`w-3 h-3 rounded-full ${item.val ? 'gold-bg' : 'bg-white/10'}`}></div>
-                      <span className="text-[10px] uppercase tracking-widest text-stone-400">{item.label}: <span className={item.val ? 'text-white' : 'text-stone-600'}>{item.val ? 'Sim' : 'Não'}</span></span>
+                    <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/10">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase tracking-widest text-stone-400">{item.label}</span>
+                        <span className={`text-[9px] font-bold uppercase tracking-widest ${item.val ? 'text-[#BF953F]' : 'text-stone-600'}`}>{item.val ? 'Sim' : 'Não'}</span>
+                      </div>
+                      {item.val && item.detail && <p className="text-[9px] text-stone-500 mt-2 italic">Obs: {item.detail}</p>}
                     </div>
                   ))}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-[10px] uppercase tracking-widest text-stone-500 border-b border-white/10 pb-2">Hábitos & Estilo</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { label: 'Estilo de Vida Intenso', val: selectedEntryForAuth.analysis.intenseLifestyle },
+                    { label: 'Maquiagem à Prova d\'Água', val: selectedEntryForAuth.analysis.makeupHabits },
+                    { label: 'Hábito de Coçar/Puxar', val: selectedEntryForAuth.analysis.lashTics },
+                    { label: 'Posição de Dormir', val: true, detail: selectedEntryForAuth.analysis.sleepingPosition },
+                  ].map((item, i) => (
+                    <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/10">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase tracking-widest text-stone-400">{item.label}</span>
+                        {typeof item.val === 'boolean' && <span className={`text-[9px] font-bold uppercase tracking-widest ${item.val ? 'text-[#BF953F]' : 'text-stone-600'}`}>{item.val ? 'Sim' : 'Não'}</span>}
+                      </div>
+                      {item.detail && <p className="text-[9px] text-white mt-2 font-bold uppercase tracking-widest">{item.detail}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-[10px] uppercase tracking-widest text-stone-500 border-b border-white/10 pb-2">Expectativas de Design</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+                    <p className="text-[8px] uppercase tracking-widest text-stone-500 mb-1">Volume</p>
+                    <p className="text-[10px] text-white font-bold uppercase tracking-widest">{selectedEntryForAuth.analysis.desiredVolume}</p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+                    <p className="text-[8px] uppercase tracking-widest text-stone-500 mb-1">Mapping</p>
+                    <p className="text-[10px] text-white font-bold uppercase tracking-widest">{selectedEntryForAuth.analysis.desiredStyle}</p>
+                  </div>
                 </div>
               </div>
 

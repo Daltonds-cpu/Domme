@@ -1,17 +1,30 @@
 
 export interface AnalysisData {
   // Avaliação de Saúde
-  isWearingMascara: boolean;
-  isPregnant: boolean;
   hasAllergies: boolean;
-  thyroidGlaucomaIssues: boolean;
-  oncologicalTreatment: boolean;
+  allergyDetails?: string;
   recentProcedures: boolean;
-  sleepsOnSide: boolean;
+  isPregnant: boolean;
+  hasEyeConditions: boolean;
+  usesContactLenses: boolean;
+  oncologicalTreatment: boolean;
+  usesGrowthMeds: boolean;
+  
+  // Hábitos e Estilo de Vida
+  intenseLifestyle: boolean;
+  sleepingPosition: string;
+  makeupHabits: boolean;
+  lashTics: boolean;
+  
+  // Alinhamento de Expectativas
+  previousExperience: boolean;
+  negativeReaction?: string;
+  desiredVolume: string;
+  desiredStyle: string;
   
   // Ficha Técnica
-  technique: string; // Fio a Fio, Volume Russo, etc.
-  mapping: string; // Boneca, Esquilo, Gatinho, etc.
+  technique: string;
+  mapping: string;
   style: string;
   curvature: string;
   thickness: string;
@@ -19,7 +32,7 @@ export interface AnalysisData {
   
   // Notas e Consentimento
   additionalNotes: string;
-  signature?: string; // Base64 da assinatura manual
+  signature?: string; // URL do Firebase Storage
 }
 
 export interface DossieEntry {

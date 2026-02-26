@@ -97,13 +97,22 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
         value: totalVal,
         paymentMethod: installments > 1 ? 'CARTÃO' : 'PIX',
         analysis: {
-          isWearingMascara: false,
-          isPregnant: false,
           hasAllergies: false,
-          thyroidGlaucomaIssues: false,
-          oncologicalTreatment: false,
+          allergyDetails: '',
           recentProcedures: false,
-          sleepsOnSide: false,
+          isPregnant: false,
+          hasEyeConditions: false,
+          usesContactLenses: false,
+          oncologicalTreatment: false,
+          usesGrowthMeds: false,
+          intenseLifestyle: false,
+          sleepingPosition: 'Costas',
+          makeupHabits: false,
+          lashTics: false,
+          previousExperience: false,
+          negativeReaction: '',
+          desiredVolume: 'Natural',
+          desiredStyle: 'Gatinho',
           technique: procedure || 'Atendimento Personalizado',
           mapping: '-',
           style: '-',
@@ -111,6 +120,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
           thickness: '-',
           adhesiveUsed: '-',
           additionalNotes: `${observations}. Parcelamento: ${installments}x. Sinal: R$ ${depVal}.`,
+          signature: ''
         }
       };
       const updatedDossie = [newDossieEntry, ...(selectedClient.dossie || [])];
