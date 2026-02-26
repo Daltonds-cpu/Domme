@@ -45,6 +45,8 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedServiceFile, setSelectedServiceFile] = useState<File | null>(null);
   const [selectedEntryForAuth, setSelectedEntryForAuth] = useState<DossieEntry | null>(null);
+  const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
+  const [entryBeingSigned, setEntryBeingSigned] = useState<DossieEntry | null>(null);
   
   const handleOpenNewAtendimento = () => {
     setNewEntry({
@@ -263,10 +265,64 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
       setSelectedClientForDossie(updatedClient);
       setIsNewAtendimentoOpen(false);
       setSelectedServiceFile(null);
+      
+      // Abrir Ficha de Autorização para assinatura após salvar os dados técnicos
+      setEntryBeingSigned(entry);
+      setIsSignatureModalOpen(true);
+      
       loadClients();
     } catch (error) {
       console.error("Erro ao salvar atendimento:", error);
       alert("Erro ao salvar a ficha técnica. Tente novamente.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveSignature = async () => {
+    if (!selectedClientForDossie || !entryBeingSigned || isSaving) return;
+
+    setIsSaving(true);
+    try {
+      let signatureUrl = '';
+      if (entryBeingSigned.analysis.signature && entryBeingSigned.analysis.signature.startsWith('data:image')) {
+        const response = await fetch(entryBeingSigned.analysis.signature);
+        const blob = await response.blob();
+        const fileName = `${Date.now()}_signature.png`;
+        const user = auth.currentUser;
+        if (user) {
+          const storageRef = ref(storage, `uploads/${user.uid}/${selectedClientForDossie.id}/${fileName}`);
+          await uploadBytes(storageRef, blob);
+          signatureUrl = await getDownloadURL(storageRef);
+        }
+      }
+
+      const updatedDossie = selectedClientForDossie.dossie.map(entry => {
+        if (entry.id === entryBeingSigned.id) {
+          return {
+            ...entry,
+            analysis: {
+              ...entryBeingSigned.analysis,
+              signature: signatureUrl || entry.analysis.signature
+            }
+          };
+        }
+        return entry;
+      });
+
+      const updatedClient = {
+        ...selectedClientForDossie,
+        dossie: updatedDossie
+      };
+
+      await dataService.saveItem('clients', updatedClient);
+      setSelectedClientForDossie(updatedClient);
+      setIsSignatureModalOpen(false);
+      setEntryBeingSigned(null);
+      loadClients();
+    } catch (error) {
+      console.error("Erro ao salvar assinatura:", error);
+      alert("Erro ao salvar a assinatura. Tente novamente.");
     } finally {
       setIsSaving(false);
     }
@@ -467,14 +523,14 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
         </div>
       )}
 
-      {/* MODAL: NOVO ATENDIMENTO (FICHA TÉCNICA) */}
+      {/* MODAL: NOVO ATENDIMENTO (REGISTRAR ATENDIMENTO) */}
       {isNewAtendimentoOpen && (
         <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/95 backdrop-blur-md" onClick={() => setIsNewAtendimentoOpen(false)}></div>
           <div className="relative w-full max-w-3xl glass p-8 md:p-12 rounded-[3.5rem] border-[#BF953F]/40 animate-in zoom-in-95 duration-500 max-h-[85vh] overflow-y-auto no-scrollbar">
             <header className="mb-10 text-center">
               <p className="text-[10px] uppercase tracking-[0.5em] text-[#BF953F] font-bold">Protocolo Técnico</p>
-              <h3 className="text-2xl font-serif text-white italic mt-2">Nova Ficha de Atendimento</h3>
+              <h3 className="text-2xl font-serif text-white italic mt-2">Registrar Atendimento</h3>
             </header>
 
             <div className="space-y-10">
@@ -497,143 +553,6 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
                       <option value="CARTÃO">CARTÃO</option>
                       <option value="DINHEIRO">DINHEIRO</option>
                     </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Seção Saúde Ocular */}
-              <div className="space-y-6">
-                <h4 className="text-[10px] uppercase tracking-widest text-stone-500 border-b border-white/10 pb-2">Avaliação de Saúde (Anamnese)</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Toggle 
-                    label="Possui Alergias? (Látex, Cola, etc)" 
-                    value={newEntry.analysis?.hasAllergies || false} 
-                    onChange={(val) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, hasAllergies: val}}))} 
-                  />
-                  {newEntry.analysis?.hasAllergies && (
-                    <input 
-                      placeholder="Especifique as alergias..." 
-                      value={newEntry.analysis?.allergyDetails} 
-                      onChange={e => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, allergyDetails: e.target.value}}))}
-                      className="w-full bg-white/5 border border-[#BF953F]/30 rounded-2xl px-5 py-3 text-white text-xs outline-none"
-                    />
-                  )}
-                  <Toggle 
-                    label="Procedimentos Recentes (3 meses)" 
-                    value={newEntry.analysis?.recentProcedures || false} 
-                    onChange={(val) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, recentProcedures: val}}))} 
-                  />
-                  <Toggle 
-                    label="Gestante ou Amamentando?" 
-                    value={newEntry.analysis?.isPregnant || false} 
-                    onChange={(val) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, isPregnant: val}}))} 
-                  />
-                  <Toggle 
-                    label="Glaucoma, Catarata ou Blefarite?" 
-                    value={newEntry.analysis?.hasEyeConditions || false} 
-                    onChange={(val) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, hasEyeConditions: val}}))} 
-                  />
-                  <Toggle 
-                    label="Usa Lentes de Contato?" 
-                    value={newEntry.analysis?.usesContactLenses || false} 
-                    onChange={(val) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, usesContactLenses: val}}))} 
-                  />
-                  <Toggle 
-                    label="Tratamento Oncológico?" 
-                    value={newEntry.analysis?.oncologicalTreatment || false} 
-                    onChange={(val) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, oncologicalTreatment: val}}))} 
-                  />
-                  <Toggle 
-                    label="Usa Remédio p/ Crescimento Cílios?" 
-                    value={newEntry.analysis?.usesGrowthMeds || false} 
-                    onChange={(val) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, usesGrowthMeds: val}}))} 
-                  />
-                </div>
-              </div>
-
-              {/* Seção Hábitos e Estilo de Vida */}
-              <div className="space-y-6">
-                <h4 className="text-[10px] uppercase tracking-widest text-stone-500 border-b border-white/10 pb-2">Hábitos e Estilo de Vida (Retenção)</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Toggle 
-                    label="Pratica Natação, Sauna ou Exercícios Intensos?" 
-                    value={newEntry.analysis?.intenseLifestyle || false} 
-                    onChange={(val) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, intenseLifestyle: val}}))} 
-                  />
-                  <Toggle 
-                    label="Usa Rímel à Prova d'Água / Óleo?" 
-                    value={newEntry.analysis?.makeupHabits || false} 
-                    onChange={(val) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, makeupHabits: val}}))} 
-                  />
-                  <Toggle 
-                    label="Hábito de Coçar ou Puxar Cílios?" 
-                    value={newEntry.analysis?.lashTics || false} 
-                    onChange={(val) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, lashTics: val}}))} 
-                  />
-                  <div className="space-y-3">
-                    <p className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Posição Favorita p/ Dormir</p>
-                    <div className="flex flex-wrap gap-2">
-                      {['Costas', 'Lado Esquerdo', 'Lado Direito', 'Bruços'].map(pos => (
-                        <button
-                          key={pos}
-                          type="button"
-                          onClick={() => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, sleepingPosition: pos}}))}
-                          className={`px-4 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest border transition-all ${newEntry.analysis?.sleepingPosition === pos ? 'gold-bg text-black border-transparent' : 'bg-white/5 border-white/10 text-stone-500 hover:border-[#BF953F]/30'}`}
-                        >
-                          {pos}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Seção Alinhamento de Expectativas */}
-              <div className="space-y-6">
-                <h4 className="text-[10px] uppercase tracking-widest text-stone-500 border-b border-white/10 pb-2">Alinhamento de Expectativas (Design)</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Toggle 
-                    label="Já fez extensão antes?" 
-                    value={newEntry.analysis?.previousExperience || false} 
-                    onChange={(val) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, previousExperience: val}}))} 
-                  />
-                  {newEntry.analysis?.previousExperience && (
-                    <input 
-                      placeholder="Teve alguma reação negativa? Especifique..." 
-                      value={newEntry.analysis?.negativeReaction} 
-                      onChange={e => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, negativeReaction: e.target.value}}))}
-                      className="w-full bg-white/5 border border-[#BF953F]/30 rounded-2xl px-5 py-3 text-white text-xs outline-none"
-                    />
-                  )}
-                  <div className="space-y-3">
-                    <p className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Volume Desejado</p>
-                    <div className="flex gap-2">
-                      {['Natural', 'Volumoso'].map(vol => (
-                        <button
-                          key={vol}
-                          type="button"
-                          onClick={() => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, desiredVolume: vol}}))}
-                          className={`flex-1 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest border transition-all ${newEntry.analysis?.desiredVolume === vol ? 'gold-bg text-black border-transparent' : 'bg-white/5 border-white/10 text-stone-500'}`}
-                        >
-                          {vol}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <p className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Mapping Desejado</p>
-                    <div className="flex gap-2">
-                      {['Gatinho', 'Boneca'].map(style => (
-                        <button
-                          key={style}
-                          type="button"
-                          onClick={() => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, desiredStyle: style}}))}
-                          className={`flex-1 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest border transition-all ${newEntry.analysis?.desiredStyle === style ? 'gold-bg text-black border-transparent' : 'bg-white/5 border-white/10 text-stone-500'}`}
-                        >
-                          {style}
-                        </button>
-                      ))}
-                    </div>
                   </div>
                 </div>
               </div>
@@ -666,10 +585,10 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
               </div>
 
               <div className="space-y-4">
-                <h4 className="text-[10px] uppercase tracking-widest text-stone-500 border-b border-white/10 pb-2">Consentimento & Assinatura</h4>
+                <h4 className="text-[10px] uppercase tracking-widest text-stone-500 border-b border-white/10 pb-2">Mídia do Procedimento</h4>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <h4 className="text-[10px] uppercase tracking-widest text-stone-500">Foto do Procedimento</h4>
+                    <h4 className="text-[10px] uppercase tracking-widest text-stone-500">Foto do Trabalho</h4>
                     <label className="cursor-pointer gold-bg text-black px-4 py-2 rounded-full text-[8px] font-bold uppercase tracking-widest hover:scale-105 transition-all">
                       {selectedServiceFile ? 'Foto Selecionada' : 'Anexar Foto'}
                       <input type="file" className="hidden" accept="image/*" onChange={(e) => setSelectedServiceFile(e.target.files?.[0] || null)} disabled={isSaving} />
@@ -684,13 +603,6 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
                     </div>
                   )}
                 </div>
-
-                <div className="space-y-1">
-                  <label className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Observações Adicionais</label>
-                  <textarea rows={3} value={newEntry.analysis?.additionalNotes} onChange={e => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, additionalNotes: e.target.value}}))} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-xs outline-none focus:border-[#BF953F] resize-y min-h-[80px]" placeholder="Intercorrências ou preferências da cliente..."></textarea>
-                </div>
-                
-                <SignatureCanvas onSave={(sig) => setNewEntry(prev => ({...prev, analysis: {...prev.analysis!, signature: sig}}))} />
               </div>
 
               <button 
@@ -698,7 +610,176 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
                 disabled={isSaving}
                 className={`w-full gold-bg text-black py-6 rounded-[2rem] font-bold uppercase tracking-[0.4em] text-[10px] shadow-2xl transition-all ${isSaving ? 'opacity-70 cursor-wait' : 'hover:scale-[1.02]'}`}
               >
-                {isSaving ? 'Processando Ficha...' : 'Efetivar Atendimento Elite'}
+                {isSaving ? 'Registrando Atendimento...' : 'Salvar e Abrir Ficha de Autorização'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: FICHA DE AUTORIZAÇÃO & ANAMNESE (ASSINATURA) */}
+      {isSignatureModalOpen && entryBeingSigned && (
+        <div className="fixed inset-0 z-[6000] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/98 backdrop-blur-xl" onClick={() => setIsSignatureModalOpen(false)}></div>
+          <div className="relative w-full max-w-3xl glass p-8 md:p-12 rounded-[3rem] border-[#BF953F]/40 animate-in zoom-in-95 duration-500 max-h-[90vh] overflow-y-auto no-scrollbar">
+            <header className="mb-10 text-center">
+              <p className="text-[10px] uppercase tracking-[0.5em] text-[#BF953F] font-bold">Documento Elite</p>
+              <h3 className="text-2xl font-serif text-white italic mt-2">Ficha de Autorização & Anamnese</h3>
+              <p className="text-[9px] uppercase tracking-widest text-stone-500 mt-2">Cliente: {selectedClientForDossie?.name}</p>
+            </header>
+
+            <div className="space-y-10">
+              {/* Seção Saúde Ocular */}
+              <div className="space-y-6">
+                <h4 className="text-[10px] uppercase tracking-widest text-stone-500 border-b border-white/10 pb-2">Avaliação de Saúde (Anamnese)</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Toggle 
+                    label="Possui Alergias? (Látex, Cola, etc)" 
+                    value={entryBeingSigned.analysis.hasAllergies} 
+                    onChange={(val) => setEntryBeingSigned(prev => ({...prev!, analysis: {...prev!.analysis, hasAllergies: val}}))} 
+                  />
+                  {entryBeingSigned.analysis.hasAllergies && (
+                    <input 
+                      placeholder="Especifique as alergias..." 
+                      value={entryBeingSigned.analysis.allergyDetails} 
+                      onChange={e => setEntryBeingSigned(prev => ({...prev!, analysis: {...prev!.analysis, allergyDetails: e.target.value}}))}
+                      className="w-full bg-white/5 border border-[#BF953F]/30 rounded-2xl px-5 py-3 text-white text-xs outline-none"
+                    />
+                  )}
+                  <Toggle 
+                    label="Procedimentos Recentes (3 meses)" 
+                    value={entryBeingSigned.analysis.recentProcedures} 
+                    onChange={(val) => setEntryBeingSigned(prev => ({...prev!, analysis: {...prev!.analysis, recentProcedures: val}}))} 
+                  />
+                  <Toggle 
+                    label="Gestante ou Amamentando?" 
+                    value={entryBeingSigned.analysis.isPregnant} 
+                    onChange={(val) => setEntryBeingSigned(prev => ({...prev!, analysis: {...prev!.analysis, isPregnant: val}}))} 
+                  />
+                  <Toggle 
+                    label="Glaucoma, Catarata ou Blefarite?" 
+                    value={entryBeingSigned.analysis.hasEyeConditions} 
+                    onChange={(val) => setEntryBeingSigned(prev => ({...prev!, analysis: {...prev!.analysis, hasEyeConditions: val}}))} 
+                  />
+                  <Toggle 
+                    label="Usa Lentes de Contato?" 
+                    value={entryBeingSigned.analysis.usesContactLenses} 
+                    onChange={(val) => setEntryBeingSigned(prev => ({...prev!, analysis: {...prev!.analysis, usesContactLenses: val}}))} 
+                  />
+                  <Toggle 
+                    label="Tratamento Oncológico?" 
+                    value={entryBeingSigned.analysis.oncologicalTreatment} 
+                    onChange={(val) => setEntryBeingSigned(prev => ({...prev!, analysis: {...prev!.analysis, oncologicalTreatment: val}}))} 
+                  />
+                  <Toggle 
+                    label="Usa Remédio p/ Crescimento Cílios?" 
+                    value={entryBeingSigned.analysis.usesGrowthMeds} 
+                    onChange={(val) => setEntryBeingSigned(prev => ({...prev!, analysis: {...prev!.analysis, usesGrowthMeds: val}}))} 
+                  />
+                </div>
+              </div>
+
+              {/* Seção Hábitos e Estilo de Vida */}
+              <div className="space-y-6">
+                <h4 className="text-[10px] uppercase tracking-widest text-stone-500 border-b border-white/10 pb-2">Hábitos e Estilo de Vida</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Toggle 
+                    label="Pratica Natação, Sauna ou Exercícios Intensos?" 
+                    value={entryBeingSigned.analysis.intenseLifestyle} 
+                    onChange={(val) => setEntryBeingSigned(prev => ({...prev!, analysis: {...prev!.analysis, intenseLifestyle: val}}))} 
+                  />
+                  <Toggle 
+                    label="Usa Rímel à Prova d'Água / Óleo?" 
+                    value={entryBeingSigned.analysis.makeupHabits} 
+                    onChange={(val) => setEntryBeingSigned(prev => ({...prev!, analysis: {...prev!.analysis, makeupHabits: val}}))} 
+                  />
+                  <Toggle 
+                    label="Hábito de Coçar ou Puxar Cílios?" 
+                    value={entryBeingSigned.analysis.lashTics} 
+                    onChange={(val) => setEntryBeingSigned(prev => ({...prev!, analysis: {...prev!.analysis, lashTics: val}}))} 
+                  />
+                  <div className="space-y-3">
+                    <p className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Posição Favorita p/ Dormir</p>
+                    <div className="flex flex-wrap gap-2">
+                      {['Costas', 'Lado Esquerdo', 'Lado Direito', 'Bruços'].map(pos => (
+                        <button
+                          key={pos}
+                          type="button"
+                          onClick={() => setEntryBeingSigned(prev => ({...prev!, analysis: {...prev!.analysis, sleepingPosition: pos}}))}
+                          className={`px-4 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest border transition-all ${entryBeingSigned.analysis.sleepingPosition === pos ? 'gold-bg text-black border-transparent' : 'bg-white/5 border-white/10 text-stone-500 hover:border-[#BF953F]/30'}`}
+                        >
+                          {pos}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Seção Alinhamento de Expectativas */}
+              <div className="space-y-6">
+                <h4 className="text-[10px] uppercase tracking-widest text-stone-500 border-b border-white/10 pb-2">Alinhamento de Expectativas</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Toggle 
+                    label="Já fez extensão antes?" 
+                    value={entryBeingSigned.analysis.previousExperience} 
+                    onChange={(val) => setEntryBeingSigned(prev => ({...prev!, analysis: {...prev!.analysis, previousExperience: val}}))} 
+                  />
+                  {entryBeingSigned.analysis.previousExperience && (
+                    <input 
+                      placeholder="Teve alguma reação negativa? Especifique..." 
+                      value={entryBeingSigned.analysis.negativeReaction} 
+                      onChange={e => setEntryBeingSigned(prev => ({...prev!, analysis: {...prev!.analysis, negativeReaction: e.target.value}}))}
+                      className="w-full bg-white/5 border border-[#BF953F]/30 rounded-2xl px-5 py-3 text-white text-xs outline-none"
+                    />
+                  )}
+                  <div className="space-y-3">
+                    <p className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Volume Desejado</p>
+                    <div className="flex gap-2">
+                      {['Natural', 'Volumoso'].map(vol => (
+                        <button
+                          key={vol}
+                          type="button"
+                          onClick={() => setEntryBeingSigned(prev => ({...prev!, analysis: {...prev!.analysis, desiredVolume: vol}}))}
+                          className={`flex-1 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest border transition-all ${entryBeingSigned.analysis.desiredVolume === vol ? 'gold-bg text-black border-transparent' : 'bg-white/5 border-white/10 text-stone-500'}`}
+                        >
+                          {vol}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <h4 className="text-[10px] uppercase tracking-widest text-stone-500 border-b border-white/10 pb-2">Consentimento & Assinatura</h4>
+                
+                <div className="bg-white/5 p-6 rounded-[2rem] border border-white/10 space-y-4">
+                  <p className="text-[10px] text-stone-400 leading-relaxed italic">
+                    "Autorizo a realização do procedimento de extensão de cílios e o registro fotográfico para fins de acompanhamento técnico e divulgação em portfólio. Declaro que as informações acima são verdadeiras."
+                  </p>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Observações da Cliente</label>
+                  <textarea 
+                    rows={3} 
+                    value={entryBeingSigned.analysis.additionalNotes} 
+                    onChange={e => setEntryBeingSigned(prev => ({...prev!, analysis: {...prev!.analysis, additionalNotes: e.target.value}}))} 
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-xs outline-none focus:border-[#BF953F] resize-y min-h-[80px]" 
+                    placeholder="Alguma observação específica para hoje?"
+                  ></textarea>
+                </div>
+                
+                <SignatureCanvas onSave={(sig) => setEntryBeingSigned(prev => ({...prev!, analysis: {...prev!.analysis, signature: sig}}))} />
+              </div>
+
+              <button 
+                onClick={handleSaveSignature} 
+                disabled={isSaving}
+                className={`w-full gold-bg text-black py-6 rounded-[2rem] font-bold uppercase tracking-[0.4em] text-[10px] shadow-2xl transition-all ${isSaving ? 'opacity-70 cursor-wait' : 'hover:scale-[1.02]'}`}
+              >
+                {isSaving ? 'Finalizando Documento...' : 'Assinar e Finalizar Atendimento'}
               </button>
             </div>
           </div>
