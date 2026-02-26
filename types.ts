@@ -42,6 +42,7 @@ export interface Client {
   birthday: string;
   eyeShape: EyeShape;
   notes: string;
+  photoUrl?: string;
   gallery: string[];
   dossie: DossieEntry[];
   lastVisit: string;

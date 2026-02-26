@@ -69,6 +69,10 @@ const App: React.FC = () => {
               setActiveTab('clients');
             }} 
             onNavigateToSchedule={() => setActiveTab('schedule')}
+            onNavigateToClient={(id) => {
+              setInitialSelectedClientId(id);
+              setActiveTab('clients');
+            }}
           />
         );
       case 'clients':

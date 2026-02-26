@@ -8,6 +8,7 @@ import { auth, dataService } from '../services/firebase';
 interface DashboardProps {
   onNavigateToRegistration?: (name: string) => void;
   onNavigateToSchedule?: () => void;
+  onNavigateToClient?: (id: string) => void;
 }
 
 interface Reminder {
@@ -39,7 +40,7 @@ const TimeBanner: React.FC = () => {
   );
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ onNavigateToRegistration, onNavigateToSchedule }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onNavigateToRegistration, onNavigateToSchedule, onNavigateToClient }) => {
   const [isOverlayOpen, setIsOverlayOpen] = useState(false);
   const [todayAppts, setTodayAppts] = useState<Appointment[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -105,6 +106,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToRegistration, onNavig
       setReminders(prev => prev.filter(r => r.id !== id));
       setDeletingId(null);
     }, 400);
+  };
+
+  const handleDeleteClient = async (id: string) => {
+    if (window.confirm('Tem certeza que deseja remover este perfil VIP? Esta ação é irreversível.')) {
+      await dataService.deleteItem('clients', id);
+      loadDashboardData();
+    }
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -227,15 +235,29 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToRegistration, onNavig
             {birthdays.length > 0 ? birthdays.map(c => (
               <div key={c.id} className="flex items-center justify-between p-5 rounded-2xl bg-[#BF953F]/5 border border-[#BF953F]/20 animate-in zoom-in-95 duration-500">
                 <div className="flex items-center space-x-3">
-                  <span className="text-xl">🎈</span>
+                  <div className="w-10 h-10 rounded-full border border-[#BF953F]/30 overflow-hidden flex items-center justify-center bg-white/5">
+                    {c.photoUrl || c.gallery?.[0] ? (
+                      <img src={c.photoUrl || c.gallery?.[0]} className="w-full h-full object-cover" alt="" />
+                    ) : (
+                      <ICONS.Eye className="w-5 h-5 text-[#BF953F]/40" />
+                    )}
+                  </div>
                   <div>
                     <p className="text-[11px] font-bold text-white uppercase tracking-widest">{c.name}</p>
                     <p className="text-[9px] text-[#BF953F] uppercase">Aniversariante do Dia</p>
                   </div>
                 </div>
-                <a href={`https://wa.me/${c.phone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="w-10 h-10 rounded-full glass border-[#BF953F]/40 flex items-center justify-center text-[#BF953F] hover:bg-[#BF953F] hover:text-black transition-all">
-                  <ICONS.WhatsApp className="w-4 h-4" />
-                </a>
+                <div className="flex items-center space-x-2">
+                  <a href={`https://wa.me/${c.phone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-full glass border-[#BF953F]/40 flex items-center justify-center text-[#BF953F] hover:bg-[#BF953F] hover:text-black transition-all" title="WhatsApp">
+                    <ICONS.WhatsApp className="w-3 h-3" />
+                  </a>
+                  <button onClick={() => onNavigateToClient?.(c.id)} className="w-8 h-8 rounded-full glass border-[#BF953F]/40 flex items-center justify-center text-[#BF953F] hover:bg-[#BF953F] hover:text-black transition-all" title="Dossiê">
+                    <ICONS.Portfolio className="w-3 h-3" />
+                  </button>
+                  <button onClick={() => handleDeleteClient(c.id)} className="w-8 h-8 rounded-full glass border-red-500/20 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all" title="Excluir">
+                    <ICONS.Trash className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
             )) : (
               <div className="text-center py-20 opacity-30 flex flex-col items-center">
@@ -261,6 +283,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToRegistration, onNavig
                   onClick={onNavigateToSchedule}
                 >
                   <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 rounded-full border border-white/10 overflow-hidden flex items-center justify-center bg-white/5">
+                      {client?.photoUrl || client?.gallery?.[0] ? (
+                        <img src={client?.photoUrl || client?.gallery?.[0]} className="w-full h-full object-cover" alt="" />
+                      ) : (
+                        <ICONS.Eye className="w-5 h-5 text-[#BF953F]/40" />
+                      )}
+                    </div>
                     <span className="text-[11px] font-bold text-[#BF953F] font-num">{appt.time}</span>
                     <div className="h-4 w-[1px] bg-white/10"></div>
                     <div>
@@ -268,7 +297,20 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToRegistration, onNavig
                       <p className="text-[8px] uppercase tracking-widest text-stone-500">{appt.serviceType}</p>
                     </div>
                   </div>
-                  <ICONS.Plus className="w-3 h-3 rotate-45 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <a href={`https://wa.me/${client?.phone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="w-7 h-7 rounded-full glass border-[#BF953F]/20 flex items-center justify-center text-[#BF953F] hover:bg-[#BF953F] hover:text-black transition-all">
+                        <ICONS.WhatsApp className="w-3 h-3" />
+                      </a>
+                      <button onClick={(e) => { e.stopPropagation(); onNavigateToClient?.(appt.clientId); }} className="w-7 h-7 rounded-full glass border-[#BF953F]/20 flex items-center justify-center text-[#BF953F] hover:bg-[#BF953F] hover:text-black transition-all">
+                        <ICONS.Portfolio className="w-3 h-3" />
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); handleDeleteClient(appt.clientId); }} className="w-7 h-7 rounded-full glass border-red-500/20 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all">
+                        <ICONS.Trash className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <ICONS.Plus className="w-3 h-3 rotate-45 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                 </div>
               );
             }) : (

@@ -43,7 +43,7 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
   });
 
   const [formClient, setFormClient] = useState<Partial<Client>>({ 
-    name: '', phone: '', email: '', birthday: '', eyeShape: EyeShape.ALMOND, gallery: [], dossie: [], notes: '' 
+    name: '', phone: '', email: '', birthday: '', eyeShape: EyeShape.ALMOND, gallery: [], dossie: [], notes: '', photoUrl: '' 
   });
 
   useEffect(() => {
@@ -64,7 +64,7 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
   };
 
   const handleSaveClient = async () => {
-    if (!formClient.name) return;
+    if (!formClient.name || isUploading) return;
     const saved = await dataService.saveItem('clients', {
       ...formClient,
       lastVisit: 'Novo'
@@ -87,7 +87,8 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
       if (isGallery && selectedClientForDossie) {
         const updated = {
           ...selectedClientForDossie,
-          gallery: [url, ...(selectedClientForDossie.gallery || [])]
+          gallery: [url, ...(selectedClientForDossie.gallery || [])],
+          photoUrl: selectedClientForDossie.photoUrl || url // Set as profile pic if none exists
         };
         await dataService.saveItem('clients', updated);
         setSelectedClientForDossie(updated);
@@ -95,6 +96,7 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
       } else if (!isGallery) {
         setFormClient(prev => ({
           ...prev,
+          photoUrl: url,
           gallery: [url, ...(prev.gallery || [])]
         }));
       }
@@ -106,7 +108,7 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
   };
 
   const handleSaveEntry = async () => {
-    if (!selectedClientForDossie || !newEntry.procedure) return;
+    if (!selectedClientForDossie || !newEntry.procedure || isUploading) return;
 
     const entry: DossieEntry = {
       ...newEntry as DossieEntry,
@@ -125,6 +127,13 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
     setSelectedClientForDossie(updatedClient);
     setIsNewAtendimentoOpen(false);
     loadClients();
+  };
+
+  const handleDeleteClient = async (id: string) => {
+    if (window.confirm('Tem certeza que deseja remover este perfil VIP? Esta ação é irreversível.')) {
+      await dataService.deleteItem('clients', id);
+      loadClients();
+    }
   };
 
   const filtered = clients.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -147,9 +156,40 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {filtered.map((client) => (
           <div key={client.id} className="relative glass rounded-[2rem] border border-[#BF953F]/20 overflow-hidden group flex flex-col hover:border-[#BF953F]/50 transition-all duration-500">
+            {/* Ações Rápidas */}
+            <div className="absolute top-6 right-6 flex flex-col space-y-3 opacity-0 group-hover:opacity-100 transition-all duration-500 z-20 translate-x-4 group-hover:translate-x-0">
+              <a 
+                href={`https://wa.me/${client.phone.replace(/\D/g,'')}`} 
+                target="_blank" 
+                rel="noreferrer" 
+                className="w-9 h-9 rounded-full glass border border-[#BF953F]/20 flex items-center justify-center text-[#BF953F] hover:bg-[#BF953F] hover:text-black transition-all shadow-lg"
+                title="WhatsApp"
+              >
+                <ICONS.WhatsApp className="w-4 h-4" />
+              </a>
+              <button 
+                onClick={() => setSelectedClientForDossie(client)} 
+                className="w-9 h-9 rounded-full glass border border-[#BF953F]/20 flex items-center justify-center text-[#BF953F] hover:bg-[#BF953F] hover:text-black transition-all shadow-lg"
+                title="Dossiê Elite"
+              >
+                <ICONS.Portfolio className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={() => handleDeleteClient(client.id)} 
+                className="w-9 h-9 rounded-full glass border-red-500/20 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-lg"
+                title="Excluir Perfil"
+              >
+                <ICONS.Trash className="w-4 h-4" />
+              </button>
+            </div>
+
             <div className="p-8 text-center space-y-6">
-              <div className="w-24 h-24 mx-auto rounded-full border border-[#BF953F]/30 overflow-hidden">
-                <img src={client.gallery?.[0] || 'https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?q=80&w=200&h=200&auto=format&fit=crop'} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" alt="" />
+              <div className="w-24 h-24 mx-auto rounded-full border border-[#BF953F]/30 overflow-hidden flex items-center justify-center bg-white/5">
+                {client.photoUrl || client.gallery?.[0] ? (
+                  <img src={client.photoUrl || client.gallery?.[0]} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" alt="" />
+                ) : (
+                  <ICONS.Eye className="w-10 h-10 text-[#BF953F]/40" />
+                )}
               </div>
               <div className="space-y-1">
                 <h3 className="text-xl font-serif text-white italic">{client.name}</h3>
@@ -168,7 +208,13 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
           <div className="relative w-full max-w-5xl glass p-8 md:p-14 rounded-[3rem] border-[#BF953F]/30 animate-in slide-in-from-bottom-10 duration-700 max-h-[90vh] overflow-y-auto no-scrollbar">
             <header className="flex flex-col md:flex-row justify-between items-center mb-12 space-y-6 md:space-y-0 border-b border-white/5 pb-8">
               <div className="flex items-center space-x-8">
-                <img src={selectedClientForDossie.gallery?.[0] || ''} className="w-20 h-20 rounded-full border-2 border-[#BF953F]/40 object-cover" alt="" />
+                <div className="w-20 h-20 rounded-full border-2 border-[#BF953F]/40 overflow-hidden flex items-center justify-center bg-white/5">
+                  {selectedClientForDossie.photoUrl || selectedClientForDossie.gallery?.[0] ? (
+                    <img src={selectedClientForDossie.photoUrl || selectedClientForDossie.gallery?.[0]} className="w-full h-full object-cover" alt="" />
+                  ) : (
+                    <ICONS.Eye className="w-8 h-8 text-[#BF953F]/40" />
+                  )}
+                </div>
                 <div>
                   <h3 className="text-3xl font-serif text-white italic">{selectedClientForDossie.name}</h3>
                   <div className="flex items-center space-x-3 mt-1">

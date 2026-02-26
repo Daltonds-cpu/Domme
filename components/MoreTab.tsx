@@ -156,6 +156,60 @@ const MoreTab: React.FC<MoreTabProps> = ({ userProfile, onUpdateProfile, deferre
           </div>
         </div>
       )}
+
+      {activeModal === 'about' && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/95 backdrop-blur-md" onClick={() => setActiveModal('none')}></div>
+          <div className="relative w-full max-w-lg glass p-10 rounded-[3rem] border-[#BF953F]/30 text-center space-y-8 animate-in zoom-in-95 duration-500">
+            <header>
+              <p className="text-[10px] uppercase tracking-[0.5em] text-[#BF953F] font-bold">Domínio Tecnológico</p>
+              <h3 className="text-2xl font-serif text-white italic mt-2">Sobre o Sistema</h3>
+            </header>
+            <div className="space-y-6 text-stone-400 text-xs leading-relaxed">
+              <p>O <span className="text-white font-bold">Domme Lash Elite</span> é uma plataforma de gestão de alta performance, desenhada para profissionais que buscam o domínio absoluto sobre seu portfólio e finanças.</p>
+              <div className="grid grid-cols-2 gap-4 pt-4">
+                <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+                  <p className="text-[#BF953F] font-bold text-[10px] uppercase tracking-widest">Versão</p>
+                  <p className="text-white mt-1">2.5.0 Gold</p>
+                </div>
+                <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+                  <p className="text-[#BF953F] font-bold text-[10px] uppercase tracking-widest">Status</p>
+                  <p className="text-white mt-1">Sincronizado</p>
+                </div>
+              </div>
+              <p className="pt-4 border-t border-white/5">Desenvolvido com foco em exclusividade, segurança de dados e experiência do usuário de luxo.</p>
+            </div>
+            <button onClick={() => setActiveModal('none')} className="w-full gold-bg text-black py-4 rounded-2xl font-bold uppercase tracking-widest text-[9px]">Fechar Panorama</button>
+          </div>
+        </div>
+      )}
+
+      {activeModal === 'care' && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/95 backdrop-blur-md" onClick={() => setActiveModal('none')}></div>
+          <div className="relative w-full max-w-2xl glass p-10 rounded-[3rem] border-[#BF953F]/30 animate-in zoom-in-95 duration-500 max-h-[85vh] overflow-y-auto no-scrollbar">
+            <header className="text-center mb-10">
+              <p className="text-[10px] uppercase tracking-[0.5em] text-[#BF953F] font-bold">Manual de Preservação</p>
+              <h3 className="text-2xl font-serif text-white italic mt-2">Cuidados Lash</h3>
+            </header>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {careTips.map((tip, i) => (
+                <div key={i} className="p-6 rounded-[2rem] bg-white/5 border border-white/10 space-y-3 group hover:border-[#BF953F]/40 transition-all">
+                  <div className="flex justify-between items-start">
+                    <span className="text-2xl">{tip.icon}</span>
+                    <button onClick={() => handleShareCare(tip.title, tip.text)} className="w-8 h-8 rounded-full glass border border-white/10 flex items-center justify-center text-[#BF953F] hover:bg-[#BF953F] hover:text-black transition-all">
+                      <ICONS.WhatsApp className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <h4 className="text-sm font-bold text-white uppercase tracking-widest">{tip.title}</h4>
+                  <p className="text-[11px] text-stone-500 leading-relaxed">{tip.text}</p>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setActiveModal('none')} className="w-full mt-10 gold-bg text-black py-4 rounded-2xl font-bold uppercase tracking-widest text-[9px]">Entendido</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
