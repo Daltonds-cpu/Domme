@@ -2,19 +2,21 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, query, where, getDoc, orderBy } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const firebaseConfig = {
-  apiKey: (process.env as any).VITE_FIREBASE_API_KEY || "AIzaSyBLtOil56xWKHUX_xoDgyzyXXlf4aj4rkE",
-  authDomain: (process.env as any).VITE_FIREBASE_AUTH_DOMAIN || "domme-5ad27.firebaseapp.com",
-  projectId: (process.env as any).VITE_FIREBASE_PROJECT_ID || "domme-5ad27",
-  storageBucket: (process.env as any).VITE_FIREBASE_STORAGE_BUCKET || "domme-5ad27.firebasestorage.app",
-  messagingSenderId: (process.env as any).VITE_FIREBASE_MESSAGING_SENDER_ID || "1006381592174",
-  appId: (process.env as any).VITE_FIREBASE_APP_ID || "1:1006381592174:web:e9df2202c764dc5dacc07f"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyBLtOil56xWKHUX_xoDgyzyXXlf4aj4rkE",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "domme-5ad27.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "domme-5ad27",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "domme-5ad27.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "1006381592174",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:1006381592174:web:e9df2202c764dc5dacc07f"
 };
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
 
 export const dataService = {
@@ -74,6 +76,17 @@ export const dataService = {
     if (!user) return;
     const docRef = doc(db, collectionName, id);
     await deleteDoc(docRef);
+  },
+
+  async uploadImage(file: File, clientId: string) {
+    const user = auth.currentUser;
+    if (!user) throw new Error("Usuário não autenticado");
+
+    const fileName = `${Date.now()}_${file.name}`;
+    const storageRef = ref(storage, `uploads/${user.uid}/${clientId}/${fileName}`);
+    
+    await uploadBytes(storageRef, file);
+    return await getDownloadURL(storageRef);
   }
 };
 

@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { ICONS } from '../constants';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Appointment, Client } from '../types';
-import { dataService } from '../services/storage';
+import { dataService } from '../services/firebase';
 
 interface Transaction {
   id: string;
@@ -30,8 +30,8 @@ const FinanceDashboard: React.FC = () => {
 
   const loadData = async () => {
     const [appts, clis] = await Promise.all([
-      dataService.getCollection('appointments'),
-      dataService.getCollection('clients')
+      dataService.getCollection('appointments') as Promise<Appointment[]>,
+      dataService.getCollection('clients') as Promise<Client[]>
     ]);
     setAppointments(appts);
     setClients(clis);
@@ -79,8 +79,8 @@ const FinanceDashboard: React.FC = () => {
     const client = clients.find(c => c.id === appt.clientId);
     if (client) {
       const updatedDossie = client.dossie.map(d => 
-        d.date === new Date(appt.date).toLocaleDateString('pt-BR') && d.technique === appt.serviceType
-        ? { ...d, notes: d.notes + " (Pagamento Total Confirmado)" } : d
+        d.date === new Date(appt.date).toLocaleDateString('pt-BR') && d.analysis.technique === appt.serviceType
+        ? { ...d, analysis: { ...d.analysis, additionalNotes: (d.analysis.additionalNotes || '') + " (Pagamento Total Confirmado)" } } : d
       );
       await dataService.saveItem('clients', { ...client, dossie: updatedDossie });
     }

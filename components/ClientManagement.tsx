@@ -17,6 +17,7 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedClientForDossie, setSelectedClientForDossie] = useState<Client | null>(null);
   const [isNewAtendimentoOpen, setIsNewAtendimentoOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   
   // Estados para o Formulário de Novo Atendimento
   const [newEntry, setNewEntry] = useState<Partial<DossieEntry>>({
@@ -42,12 +43,16 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
   });
 
   const [formClient, setFormClient] = useState<Partial<Client>>({ 
-    name: '', phone: '', email: '', birthday: '', eyeShape: EyeShape.ALMOND, gallery: [], dossie: [] 
+    name: '', phone: '', email: '', birthday: '', eyeShape: EyeShape.ALMOND, gallery: [], dossie: [], notes: '' 
   });
 
   useEffect(() => {
     loadClients();
-  }, []);
+    if (prefilledName) {
+      setFormClient(prev => ({ ...prev, name: prefilledName }));
+      setIsModalOpen(true);
+    }
+  }, [prefilledName]);
 
   const loadClients = async () => {
     const data = await dataService.getCollection('clients');
@@ -55,6 +60,48 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
     if (initialClientId) {
       const target = (data as Client[]).find(c => c.id === initialClientId);
       if (target) setSelectedClientForDossie(target);
+    }
+  };
+
+  const handleSaveClient = async () => {
+    if (!formClient.name) return;
+    const saved = await dataService.saveItem('clients', {
+      ...formClient,
+      lastVisit: 'Novo'
+    });
+    setClients(prev => [saved as Client, ...prev]);
+    setIsModalOpen(false);
+    setFormClient({ name: '', phone: '', email: '', birthday: '', eyeShape: EyeShape.ALMOND, gallery: [], dossie: [], notes: '' });
+    if (onClearPrefill) onClearPrefill();
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, isGallery: boolean = true) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const clientId = selectedClientForDossie?.id || 'new_client';
+      const url = await dataService.uploadImage(file, clientId);
+      
+      if (isGallery && selectedClientForDossie) {
+        const updated = {
+          ...selectedClientForDossie,
+          gallery: [url, ...(selectedClientForDossie.gallery || [])]
+        };
+        await dataService.saveItem('clients', updated);
+        setSelectedClientForDossie(updated);
+        loadClients();
+      } else if (!isGallery) {
+        setFormClient(prev => ({
+          ...prev,
+          gallery: [url, ...(prev.gallery || [])]
+        }));
+      }
+    } catch (error) {
+      console.error("Erro no upload:", error);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -138,6 +185,21 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
             </header>
 
             <div className="space-y-8">
+              <div className="flex justify-between items-center">
+                <h4 className="text-[10px] uppercase tracking-widest text-stone-500">Galeria de Estilo</h4>
+                <label className="cursor-pointer gold-bg text-black px-4 py-2 rounded-full text-[8px] font-bold uppercase tracking-widest hover:scale-105 transition-all">
+                  {isUploading ? 'Enviando...' : 'Adicionar Foto'}
+                  <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, true)} disabled={isUploading} />
+                </label>
+              </div>
+              <div className="grid grid-cols-3 md:grid-cols-5 gap-4">
+                {selectedClientForDossie.gallery?.map((img, i) => (
+                  <div key={i} className="aspect-square rounded-2xl overflow-hidden border border-white/10">
+                    <img src={img} className="w-full h-full object-cover" alt="" />
+                  </div>
+                ))}
+              </div>
+
               {selectedClientForDossie.dossie?.length > 0 ? (
                 selectedClientForDossie.dossie.map((entry, idx) => (
                   <div key={idx} className="glass p-8 rounded-[2rem] border-white/5 space-y-8 hover:border-[#BF953F]/20 transition-all group animate-in fade-in slide-in-from-left-4" style={{animationDelay: `${idx * 100}ms`}}>
@@ -302,6 +364,68 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ prefilledName, init
               </div>
 
               <button onClick={handleSaveEntry} className="w-full gold-bg text-black py-6 rounded-[2rem] font-bold uppercase tracking-[0.4em] text-[10px] shadow-2xl hover:scale-[1.02] transition-all">Efetivar Atendimento Elite</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: NOVO PERFIL VIP (CADASTRO DE CLIENTE) */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/95 backdrop-blur-md" onClick={() => setIsModalOpen(false)}></div>
+          <div className="relative w-full max-w-2xl glass p-8 md:p-12 rounded-[3.5rem] border-[#BF953F]/40 animate-in zoom-in-95 duration-500 max-h-[85vh] overflow-y-auto no-scrollbar">
+            <header className="mb-10 text-center">
+              <p className="text-[10px] uppercase tracking-[0.5em] text-[#BF953F] font-bold">Iniciação VIP</p>
+              <h3 className="text-2xl font-serif text-white italic mt-2">Novo Perfil de Cliente</h3>
+            </header>
+
+            <div className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-1">
+                  <label className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Nome Completo</label>
+                  <input value={formClient.name} onChange={e => setFormClient({...formClient, name: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-sm outline-none focus:border-[#BF953F]" placeholder="Ex: Maria Silva" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">WhatsApp</label>
+                  <input value={formClient.phone} onChange={e => setFormClient({...formClient, phone: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-sm outline-none focus:border-[#BF953F]" placeholder="(00) 00000-0000" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Data de Nascimento</label>
+                  <input type="date" value={formClient.birthday} onChange={e => setFormClient({...formClient, birthday: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-sm outline-none focus:border-[#BF953F]" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Formato do Olho</label>
+                  <select value={formClient.eyeShape} onChange={e => setFormClient({...formClient, eyeShape: e.target.value as EyeShape})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-sm outline-none focus:border-[#BF953F] appearance-none">
+                    {Object.values(EyeShape).map(shape => <option key={shape} value={shape}>{shape}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[9px] uppercase tracking-widest text-stone-600 ml-2">Notas de Estilo</label>
+                <textarea rows={2} value={formClient.notes} onChange={e => setFormClient({...formClient, notes: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-xs outline-none focus:border-[#BF953F] resize-none" placeholder="Preferências, curvaturas favoritas, etc..."></textarea>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-[10px] uppercase tracking-widest text-stone-500">Foto de Referência</h4>
+                  <label className="cursor-pointer gold-bg text-black px-4 py-2 rounded-full text-[8px] font-bold uppercase tracking-widest hover:scale-105 transition-all">
+                    {isUploading ? 'Enviando...' : 'Upload Foto'}
+                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, false)} disabled={isUploading} />
+                  </label>
+                </div>
+                {formClient.gallery && formClient.gallery.length > 0 && (
+                  <div className="grid grid-cols-4 gap-4">
+                    {formClient.gallery.map((img, i) => (
+                      <div key={i} className="aspect-square rounded-xl overflow-hidden border border-white/10">
+                        <img src={img} className="w-full h-full object-cover" alt="" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <button onClick={handleSaveClient} className="w-full gold-bg text-black py-6 rounded-[2rem] font-bold uppercase tracking-[0.4em] text-[10px] shadow-2xl hover:scale-[1.02] transition-all">Efetivar Cadastro VIP</button>
             </div>
           </div>
         </div>

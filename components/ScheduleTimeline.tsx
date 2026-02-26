@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Client, Appointment } from '../types';
 import RegistrationModal from './RegistrationModal';
 import { ICONS } from '../constants';
-import { dataService } from '../services/storage';
+import { dataService } from '../services/firebase';
 
 interface ScheduleTimelineProps {
   onNavigateToClient?: (clientId: string) => void;
@@ -22,8 +22,8 @@ const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({ onNavigateToClient 
   }, []);
 
   const loadData = async () => {
-    const appts = await dataService.getCollection('appointments');
-    const clis = await dataService.getCollection('clients');
+    const appts = await dataService.getCollection('appointments') as Appointment[];
+    const clis = await dataService.getCollection('clients') as Client[];
     setAppointments(appts);
     setClients(clis);
   };

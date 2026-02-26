@@ -64,6 +64,9 @@ export interface Appointment {
   time: string;
   serviceType: string;
   price: number;
+  depositValue?: number;
+  installments?: number;
+  paymentMethod?: string;
   paymentStatus?: 'pago' | 'parcial' | 'pendente';
   status: 'scheduled' | 'completed' | 'cancelled';
 }

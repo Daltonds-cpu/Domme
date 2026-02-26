@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { ICONS } from '../constants';
 import { Client, Appointment } from '../types';
 import RegistrationModal from './RegistrationModal';
-import { dataService } from '../services/firebase';
+import { auth, dataService } from '../services/firebase';
 
 interface DashboardProps {
   onNavigateToRegistration?: (name: string) => void;
@@ -53,6 +53,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToRegistration, onNavig
   const [isAddingReminder, setIsAddingReminder] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const user = auth.currentUser;
 
   useEffect(() => {
     loadDashboardData();
@@ -106,16 +107,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToRegistration, onNavig
     }, 400);
   };
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = reader.result as string;
-        setStudioLogo(base64);
-        await saveStudioSettings({ logo: base64, name: studioName, subtitle: studioSubtitle });
-      };
-      reader.readAsDataURL(file);
+      try {
+        const url = await dataService.uploadImage(file, 'studio_logo');
+        setStudioLogo(url);
+        await saveStudioSettings({ logo: url, name: studioName, subtitle: studioSubtitle });
+      } catch (error) {
+        console.error("Erro ao fazer upload da logo:", error);
+      }
     }
   };
 
@@ -139,12 +140,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToRegistration, onNavig
 
   return (
     <div className="space-y-12 pb-24 md:pb-0 animate-in fade-in duration-1000 relative">
-      <header className="flex flex-col items-center justify-center text-center space-y-6">
-        <div className="space-y-2">
-          <p className="text-[9px] uppercase tracking-[0.4em] text-[#BF953F] font-bold">Visão Sistêmica</p>
-          <h2 className="mobile-h1 font-serif text-white italic leading-tight">Domme <span className="font-normal opacity-80">Panorama</span></h2>
+      <header className="flex flex-col md:flex-row items-center justify-between space-y-6 md:space-y-0">
+        <div className="flex items-center space-x-4">
+          <img src={user?.photoURL || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&h=200&auto=format&fit=crop'} className="w-12 h-12 rounded-full border border-[#BF953F]/40 object-cover" alt="" />
+          <div className="text-left">
+            <p className="text-[10px] uppercase tracking-widest text-[#BF953F] font-bold">Bem-vinda de volta</p>
+            <h3 className="text-sm font-serif text-white italic">{user?.displayName || 'Domme Master'}</h3>
+          </div>
         </div>
-        <button onClick={() => setIsOverlayOpen(true)} className="gold-bg text-black px-10 py-4 rounded-full text-[9px] font-bold uppercase tracking-[0.2em] shadow-xl hover:scale-105 transition-all shadow-[0_10px_30px_rgba(191,149,63,0.3)] animate-gold-pulse">
+        <div className="text-center md:text-right space-y-1">
+          <p className="text-[9px] uppercase tracking-[0.4em] text-[#BF953F] font-bold">Visão Sistêmica</p>
+          <h2 className="text-2xl font-serif text-white italic leading-tight">Domme Panorama</h2>
+        </div>
+        <button onClick={() => setIsOverlayOpen(true)} className="gold-bg text-black px-8 py-3 rounded-full text-[9px] font-bold uppercase tracking-[0.2em] shadow-xl hover:scale-105 transition-all shadow-[0_10px_30px_rgba(191,149,63,0.3)] animate-gold-pulse">
           Integrar Atendimento
         </button>
       </header>

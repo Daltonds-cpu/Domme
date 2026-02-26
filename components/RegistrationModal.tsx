@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ICONS } from '../constants';
 import { Client, Appointment, DossieEntry } from '../types';
-import { dataService } from '../services/storage';
+import { dataService } from '../services/firebase';
 
 interface RegistrationModalProps {
   isOpen: boolean;
@@ -33,7 +33,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
   }, [isOpen]);
 
   const loadClients = async () => {
-    const data = await dataService.getCollection('clients');
+    const data = await dataService.getCollection('clients') as Client[];
     setClients(data);
   };
 
